@@ -1,4 +1,5 @@
 import useAuth from '../hooks/useAuth.jsx'
+import { Link } from 'react-router-dom'
 
 const Dashboard = () => {
   const { user } = useAuth()
@@ -28,6 +29,26 @@ const Dashboard = () => {
           </div>
         ))}
       </section>
+
+      {(user?.role === 'owner' || user?.role === 'admin') && (
+        <section className="rounded-[2rem] border border-emerald-400/20 bg-emerald-400/10 p-6">
+          <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">Owner tools</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              to="/dashboard/owner/listings/new"
+              className="rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950"
+            >
+              Add Listing
+            </Link>
+            <Link
+              to="/dashboard/owner/listings"
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white"
+            >
+              View My Listings
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

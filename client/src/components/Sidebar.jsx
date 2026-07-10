@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import useAuth from '../hooks/useAuth.jsx'
 
 const linkClassName = ({ isActive }) =>
   [
@@ -9,15 +10,28 @@ const linkClassName = ({ isActive }) =>
   ].join(' ')
 
 const Sidebar = () => {
+  const { user } = useAuth()
+
   return (
     <aside className="border-r border-white/10 bg-slate-950/60 px-4 py-6">
       <nav className="space-y-2">
         <NavLink to="/dashboard" end className={linkClassName}>
           Dashboard
         </NavLink>
-        <div className="rounded-2xl border border-dashed border-white/10 px-4 py-3 text-sm text-slate-500">
-          Owner and tenant pages will expand in later steps.
-        </div>
+
+        {(user?.role === 'owner' || user?.role === 'admin') && (
+          <>
+            <NavLink to="/dashboard/owner" end className={linkClassName}>
+              Owner Overview
+            </NavLink>
+            <NavLink to="/dashboard/owner/listings" className={linkClassName}>
+              My Listings
+            </NavLink>
+            <NavLink to="/dashboard/owner/listings/new" className={linkClassName}>
+              Add Listing
+            </NavLink>
+          </>
+        )}
       </nav>
     </aside>
   )
