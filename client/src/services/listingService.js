@@ -64,10 +64,22 @@ const deleteListing = async (listingId) => {
   return data
 }
 
+const updateListingStatus = async (listingId, status) => {
+  const { data } = await api.patch(`/listings/${listingId}/status`, { status })
+  return data
+}
+
+const getAllListings = async (params = {}) => {
+  const { data } = await api.get('/listings', { params })
+  return data
+}
+
 export default {
   getMyListings,
   getListingById,
   createListing,
   updateListing,
   deleteListing,
+  updateListingStatus,
+  getAllListings,
 }
