@@ -1,10 +1,15 @@
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 const authRoutes = require('./routes/authRoutes')
 const listingRoutes = require('./routes/listingRoutes')
 const { notFound, errorHandler } = require('./middleware/errorMiddleware')
 
 const app = express()
+
+// Global Security Middleware
+app.use(helmet())
 
 app.use(
   cors({
@@ -22,7 +27,18 @@ app.get('/api/health', (req, res) => {
   })
 })
 
-app.use('/api/auth', authRoutes)
+// Rate limiting for authentication routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 registration/login requests per window
+  message: {
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingRoutes)
 
 app.use(notFound)

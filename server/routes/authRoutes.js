@@ -9,11 +9,13 @@ const {
   getAdminOnlyDemo,
 } = require('../controllers/authController')
 const { protect, authorizeRoles } = require('../middleware/authMiddleware')
+const validateRequest = require('../middleware/validationMiddleware')
+const { registerSchema, loginSchema } = require('../utils/authSchemas')
 
 const router = express.Router()
 
-router.post('/register', registerUser)
-router.post('/login', loginUser)
+router.post('/register', validateRequest(registerSchema), registerUser)
+router.post('/login', validateRequest(loginSchema), loginUser)
 router.get('/me', protect, getMe)
 router.get('/protected', protect, getProtectedDemo)
 router.get('/tenant', protect, authorizeRoles('tenant', 'admin'), getTenantOnlyDemo)

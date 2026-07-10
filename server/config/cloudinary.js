@@ -4,7 +4,8 @@ const configureCloudinary = () => {
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env
 
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-    throw new Error('Cloudinary environment variables are not fully defined')
+    console.warn('Warning: Cloudinary environment variables are not fully defined. Listing image uploads will fail.')
+    return
   }
 
   cloudinary.config({

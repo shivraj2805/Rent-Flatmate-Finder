@@ -8,7 +8,10 @@ const errorHandler = (error, req, res, next) => {
   void req
   void next
 
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode
+  let statusCode = error.statusCode || res.statusCode
+  if (statusCode === 200) {
+    statusCode = 500
+  }
 
   res.status(statusCode)
   res.json({

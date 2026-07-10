@@ -1,22 +1,37 @@
 const Listing = require('../models/Listing')
-const { createListing, updateListing } = require('../services/listingService')
+const { createListing, updateListing, deleteImageFromCloudinary } = require('../services/listingService')
 
-const validateListingPayload = (payload) => {
+const validateListingPayload = (payload, isUpdate = false) => {
   const requiredFields = ['title', 'description', 'location', 'rent', 'availableFrom', 'roomType']
-  const missingField = requiredFields.find((field) => !payload[field] || String(payload[field]).trim() === '')
-
-  if (missingField) {
-    return `${missingField} is required`
+  
+  if (!isUpdate) {
+    const missingField = requiredFields.find(
+      (field) => payload[field] === undefined || payload[field] === null || String(payload[field]).trim() === ''
+    )
+    if (missingField) {
+      return `${missingField.charAt(0).toUpperCase() + missingField.slice(1)} is required`
+    }
   }
 
-  const rent = Number(payload.rent)
-  if (Number.isNaN(rent) || rent < 0) {
-    return 'Rent must be a valid positive number'
+  if (payload.rent !== undefined) {
+    const rent = Number(payload.rent)
+    if (Number.isNaN(rent) || rent <= 0) {
+      return 'Rent must be a valid positive number greater than 0'
+    }
   }
 
-  const availableDate = new Date(payload.availableFrom)
-  if (Number.isNaN(availableDate.getTime())) {
-    return 'Available date must be valid'
+  if (payload.availableFrom !== undefined) {
+    const availableDate = new Date(payload.availableFrom)
+    if (Number.isNaN(availableDate.getTime())) {
+      return 'Available date must be valid'
+    }
+  }
+
+  if (payload.roomType !== undefined) {
+    const allowedTypes = ['private-room', 'shared-room', 'studio', 'apartment', 'other']
+    if (!allowedTypes.includes(payload.roomType)) {
+      return 'Invalid room type'
+    }
   }
 
   return ''
@@ -24,6 +39,38 @@ const validateListingPayload = (payload) => {
 
 const ensureOwnerAccess = (listing, userId) => {
   return listing.owner.toString() === userId.toString()
+}
+
+const getAllListings = async (req, res, next) => {
+  try {
+    const { location, maxRent, roomType } = req.query
+    const query = { isActive: true, status: 'active' }
+
+    if (location) {
+      query.location = { $regex: location, $options: 'i' }
+    }
+
+    if (maxRent) {
+      const rentLimit = Number(maxRent)
+      if (!Number.isNaN(rentLimit)) {
+        query.rent = { $lte: rentLimit }
+      }
+    }
+
+    if (roomType) {
+      query.roomType = roomType
+    }
+
+    const listings = await Listing.find(query).sort({ createdAt: -1 })
+
+    res.json({
+      success: true,
+      count: listings.length,
+      listings,
+    })
+  } catch (error) {
+    next(error)
+  }
 }
 
 const getMyListings = async (req, res, next) => {
@@ -49,7 +96,8 @@ const getListingById = async (req, res, next) => {
       throw new Error('Listing not found')
     }
 
-    if (!ensureOwnerAccess(listing, req.user._id) && req.user.role !== 'admin') {
+    // Active/filled listings are viewable by any authenticated user. Inactive listings are only viewable by owner/admin.
+    if (!listing.isActive && !ensureOwnerAccess(listing, req.user._id) && req.user.role !== 'admin') {
       res.status(403)
       throw new Error('Not authorized to access this listing')
     }
@@ -70,6 +118,11 @@ const createNewListing = async (req, res, next) => {
     if (validationError) {
       res.status(400)
       throw new Error(validationError)
+    }
+
+    if (!req.files || req.files.length === 0) {
+      res.status(400)
+      throw new Error('At least one image is required')
     }
 
     const listing = await createListing({
@@ -102,20 +155,10 @@ const updateExistingListing = async (req, res, next) => {
       throw new Error('Not authorized to update this listing')
     }
 
-    if (req.body.title !== undefined || req.body.description !== undefined || req.body.location !== undefined || req.body.rent !== undefined || req.body.availableFrom !== undefined || req.body.roomType !== undefined) {
-      const validationError = validateListingPayload({
-        title: req.body.title ?? listing.title,
-        description: req.body.description ?? listing.description,
-        location: req.body.location ?? listing.location,
-        rent: req.body.rent ?? listing.rent,
-        availableFrom: req.body.availableFrom ?? listing.availableFrom,
-        roomType: req.body.roomType ?? listing.roomType,
-      })
-
-      if (validationError) {
-        res.status(400)
-        throw new Error(validationError)
-      }
+    const validationError = validateListingPayload(req.body, true)
+    if (validationError) {
+      res.status(400)
+      throw new Error(validationError)
     }
 
     const updatedListing = await updateListing({
@@ -128,6 +171,39 @@ const updateExistingListing = async (req, res, next) => {
       success: true,
       message: 'Listing updated successfully',
       listing: updatedListing,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const updateListingStatus = async (req, res, next) => {
+  try {
+    const listing = await Listing.findById(req.params.id)
+
+    if (!listing) {
+      res.status(404)
+      throw new Error('Listing not found')
+    }
+
+    if (!ensureOwnerAccess(listing, req.user._id) && req.user.role !== 'admin') {
+      res.status(403)
+      throw new Error('Not authorized to update this listing status')
+    }
+
+    const { status } = req.body
+    if (!status || !['active', 'filled'].includes(status)) {
+      res.status(400)
+      throw new Error('Status must be either "active" or "filled"')
+    }
+
+    listing.status = status
+    await listing.save()
+
+    res.json({
+      success: true,
+      message: `Listing marked as ${status} successfully`,
+      listing,
     })
   } catch (error) {
     next(error)
@@ -148,6 +224,13 @@ const deleteListing = async (req, res, next) => {
       throw new Error('Not authorized to delete this listing')
     }
 
+    // Delete associated images from Cloudinary
+    if (listing.images && listing.images.length > 0) {
+      for (const imgUrl of listing.images) {
+        await deleteImageFromCloudinary(imgUrl)
+      }
+    }
+
     await listing.deleteOne()
 
     res.json({
@@ -160,9 +243,11 @@ const deleteListing = async (req, res, next) => {
 }
 
 module.exports = {
+  getAllListings,
   getMyListings,
   getListingById,
   createNewListing,
   updateExistingListing,
+  updateListingStatus,
   deleteListing,
 }

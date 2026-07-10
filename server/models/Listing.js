@@ -57,12 +57,23 @@ const listingSchema = new mongoose.Schema(
       default: [],
     },
     images: {
-      type: [String],
+      type: [
+        {
+          url: { type: String, required: true },
+          publicId: { type: String, required: true },
+        },
+      ],
       default: [],
     },
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ['active', 'filled'],
+      default: 'active',
       index: true,
     },
     compatibilitySummary: {
