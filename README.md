@@ -182,7 +182,7 @@ All protected routes require a bearer token in the `Authorization` header.
 
 - The project follows an MVC-style backend structure with a service layer where needed.
 - Frontend pages and shared UI live under `client/src`.
-- The step-by-step development prompt is kept separately in [README/steps.md](README/steps.md).
+- The step-by-step development prompt is kept separately in [Documents/steps.md](Documents/steps.md).
 
 ## License
 
