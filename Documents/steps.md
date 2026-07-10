@@ -1,18 +1,6 @@
-# GitHub Copilot Agent Prompt (Step-by-Step Development)
+# Step-by-Step Development
 
-You are a Senior Full Stack MERN Developer.
-
-Your task is to build a production-ready **Rent & Flatmate Finder** application.
-
-**Important Instructions**
-
-* Do NOT generate the entire project at once.
-* Build the application **step by step**.
-* Complete one step completely before moving to the next.
-* At the end of every step, stop and ask me to continue.
-* Never skip a step.
-* Follow clean architecture, MVC pattern, reusable components, and best coding practices.
-* Explain what files you are creating and why.
+Rent & Flatmate Finder is a MERN-based marketplace for connecting tenants and owners around room listings, compatibility scoring, and real-time communication.
 
 ---
 
