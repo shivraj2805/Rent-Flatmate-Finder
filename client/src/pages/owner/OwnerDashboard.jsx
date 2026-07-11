@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Building2, PlusCircle, List, TrendingUp } from 'lucide-react'
+import { Building2, PlusCircle, List, TrendingUp, Heart } from 'lucide-react'
 import useAuth from '../../hooks/useAuth.jsx'
 
 const OwnerDashboard = () => {
@@ -74,18 +74,21 @@ const OwnerDashboard = () => {
           </span>
         </div>
 
-        {/* Profile placeholder */}
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm opacity-80">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-500">
-            <Building2 className="h-6 w-6" strokeWidth={1.8} />
+        {/* Interest Requests */}
+        <Link
+          to="/dashboard/owner/interests"
+          className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-500 transition group-hover:bg-violet-600 group-hover:text-white">
+            <Heart className="h-6 w-6" strokeWidth={1.8} />
           </div>
-          <p className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-400">Coming Soon</p>
+          <p className="mt-4 text-xs font-bold uppercase tracking-widest text-violet-400">Manage</p>
           <p className="mt-1 text-base font-bold text-slate-800">Interest Requests</p>
           <p className="mt-1 text-sm text-slate-500">Accept or decline tenant interest requests</p>
-          <span className="mt-4 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-600">
-            Step 8
+          <span className="mt-4 text-xs font-semibold text-indigo-600 group-hover:underline">
+            Review requests →
           </span>
-        </div>
+        </Link>
 
         {/* Cloudinary */}
         <div className="flex flex-col rounded-2xl border border-emerald-200 bg-emerald-50 p-6">

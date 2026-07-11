@@ -1,4 +1,5 @@
 const tenantService = require('../services/tenantService')
+const compatibilityService = require('../services/compatibilityService')
 const asyncHandler = require('../middleware/asyncHandler')
 
 /**
@@ -22,6 +23,9 @@ const getMyProfile = asyncHandler(async (req, res) => {
  */
 const updateOrCreateProfile = asyncHandler(async (req, res) => {
   const profile = await tenantService.upsertProfile(req.user._id, req.body)
+
+  // Recalculate compatibility scores in the background
+  compatibilityService.recalculateForTenantProfile(profile._id)
 
   res.json({
     success: true,

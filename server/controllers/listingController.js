@@ -43,8 +43,15 @@ const ensureOwnerAccess = (listing, userId) => {
 
 const getAllListings = async (req, res, next) => {
   try {
-    const { location, maxRent, roomType } = req.query
+    const { location, maxRent, roomType, search } = req.query
     const query = { isActive: true, status: 'active' }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ]
+    }
 
     if (location) {
       query.location = { $regex: location, $options: 'i' }

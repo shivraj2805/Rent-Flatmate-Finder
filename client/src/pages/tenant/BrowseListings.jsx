@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { MapPin, Calendar, Building2, Search, SlidersHorizontal, IndianRupee, Eye, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { MapPin, Calendar, Building2, Search, SlidersHorizontal, IndianRupee, Eye, X, ChevronLeft, ChevronRight, Heart, Loader2, Check } from 'lucide-react'
 import listingService from '../../services/listingService.js'
+import interestService from '../../services/interestService.js'
+import useAuth from '../../hooks/useAuth.jsx'
 
 const roomTypeLabel = {
   'private-room': 'Private Room',
@@ -11,11 +14,13 @@ const roomTypeLabel = {
 }
 
 const BrowseListings = () => {
+  const { user } = useAuth()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   // Filter States
+  const [search, setSearch] = useState('')
   const [location, setLocation] = useState('')
   const [maxRent, setMaxRent] = useState('')
   const [roomType, setRoomType] = useState('')
@@ -24,11 +29,18 @@ const BrowseListings = () => {
   const [selectedListing, setSelectedListing] = useState(null)
   const [activePhotoIndex, setActivePhotoIndex] = useState(0)
 
+  // Interest States
+  const [myInterests, setMyInterests] = useState([])
+  const [interestMessage, setInterestMessage] = useState('')
+  const [sendingInterest, setSendingInterest] = useState(false)
+  const [interestSuccess, setInterestSuccess] = useState('')
+
   const fetchListings = async () => {
     setLoading(true)
     setError('')
     try {
       const params = {}
+      if (search) params.search = search
       if (location) params.location = location
       if (maxRent) params.maxRent = maxRent
       if (roomType) params.roomType = roomType
@@ -42,8 +54,42 @@ const BrowseListings = () => {
     }
   }
 
+  const fetchMyInterests = async () => {
+    if (!user || user.role !== 'tenant') return
+    try {
+      const response = await interestService.getMyInterests()
+      if (response.success) {
+        setMyInterests(response.interests || [])
+      }
+    } catch (err) {
+      console.error('Failed to load interests', err)
+    }
+  }
+
+  const handleSendInterest = async (e) => {
+    e.preventDefault()
+    if (!selectedListing) return
+
+    setSendingInterest(true)
+    setInterestSuccess('')
+    setError('')
+    try {
+      const response = await interestService.sendInterest(selectedListing._id, interestMessage)
+      if (response.success) {
+        setInterestSuccess('Interest expressed successfully!')
+        setInterestMessage('')
+        await fetchMyInterests()
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to express interest')
+    } finally {
+      setSendingInterest(false)
+    }
+  }
+
   useEffect(() => {
     fetchListings()
+    fetchMyInterests()
   }, [])
 
   const handleSearchSubmit = (e) => {
@@ -52,6 +98,7 @@ const BrowseListings = () => {
   }
 
   const handleClearFilters = () => {
+    setSearch('')
     setLocation('')
     setMaxRent('')
     setRoomType('')
@@ -64,6 +111,9 @@ const BrowseListings = () => {
   const openDetails = (listing) => {
     setSelectedListing(listing)
     setActivePhotoIndex(0)
+    setInterestSuccess('')
+    setInterestMessage('')
+    setError('')
   }
 
   return (
@@ -86,7 +136,22 @@ const BrowseListings = () => {
           <span>Filters & Search</span>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 items-end">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end">
+          {/* Keyword Search */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-500">Search Keywords</label>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="e.g. WiFi, AC, Cozy"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+          </div>
+
           {/* Location Filter */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-500">Location / Area</label>
@@ -135,7 +200,7 @@ const BrowseListings = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 sm:col-span-3 lg:col-span-1">
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
             <button
               type="submit"
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-100 transition hover:bg-indigo-500 hover:scale-[1.01] cursor-pointer"
@@ -143,7 +208,7 @@ const BrowseListings = () => {
               <Search className="h-4 w-4" />
               Search
             </button>
-            {(location || maxRent || roomType) && (
+            {(search || location || maxRent || roomType) && (
               <button
                 type="button"
                 onClick={handleClearFilters}
@@ -366,6 +431,95 @@ const BrowseListings = () => {
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Express Interest Panel */}
+              {user && selectedListing.owner !== user.id && selectedListing.owner?._id !== user.id && (
+                <div className="pt-4 border-t border-slate-100 space-y-4">
+                  {(() => {
+                    const existingInterest = myInterests.find(
+                      (i) => (i.listing?._id || i.listing) === selectedListing._id
+                    )
+
+                    if (existingInterest) {
+                      return (
+                        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 flex flex-col gap-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-4 w-4 text-indigo-500 fill-indigo-500" />
+                              <span className="text-xs font-bold text-indigo-900">Interest Expressed</span>
+                            </div>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${
+                              existingInterest.status === 'accepted' ? 'bg-emerald-100 border-emerald-200 text-emerald-800' :
+                              existingInterest.status === 'declined' ? 'bg-rose-100 border-rose-200 text-rose-800' :
+                              'bg-amber-100 border-amber-200 text-amber-800'
+                            }`}>
+                              {existingInterest.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-indigo-700 italic">
+                            "Your message: {existingInterest.tenantMessage || 'No message.'}"
+                          </p>
+                          {existingInterest.status === 'accepted' && (
+                            <div className="pt-2 border-t border-indigo-200/60 flex items-center justify-between">
+                              <p className="text-[10px] text-emerald-700 font-medium">Owner accepted! You can now chat.</p>
+                              <Link to="/dashboard/tenant/interests" className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-800">
+                                View Request Details →
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    if (user.role === 'tenant') {
+                      return (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Heart className="h-4.5 w-4.5 text-rose-500 shrink-0" />
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Express Interest in this Room</h4>
+                          </div>
+                          {interestSuccess ? (
+                            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                              <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span>{interestSuccess}</span>
+                            </div>
+                          ) : (
+                            <form onSubmit={handleSendInterest} className="space-y-3">
+                              <textarea
+                                placeholder="Introduce yourself briefly to the owner, mention your occupation, move-in details, or why this place caught your eye..."
+                                value={interestMessage}
+                                onChange={(e) => setInterestMessage(e.target.value)}
+                                maxLength={1500}
+                                rows={3}
+                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                              />
+                              <button
+                                type="submit"
+                                disabled={sendingInterest}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-indigo-600 py-2.5 text-xs font-bold text-white shadow transition disabled:opacity-50 cursor-pointer"
+                              >
+                                {sendingInterest ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Sending Interest...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Heart className="h-4 w-4" />
+                                    Express Interest
+                                  </>
+                                )}
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    return null
+                  })()}
                 </div>
               )}
             </div>

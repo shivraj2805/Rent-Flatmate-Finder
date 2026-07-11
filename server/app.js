@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit')
 const authRoutes = require('./routes/authRoutes')
 const listingRoutes = require('./routes/listingRoutes')
 const tenantRoutes = require('./routes/tenantRoutes')
+const interestRoutes = require('./routes/interestRoutes')
 const { notFound, errorHandler } = require('./middleware/errorMiddleware')
 
 const app = express()
@@ -42,6 +43,7 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingRoutes)
 app.use('/api/tenant', tenantRoutes)
+app.use('/api/interests', interestRoutes)
 
 app.use(notFound)
 app.use(errorHandler)

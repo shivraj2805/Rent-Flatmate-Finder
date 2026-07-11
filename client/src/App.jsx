@@ -12,6 +12,9 @@ import EditListing from './pages/owner/EditListing.jsx'
 import MyListings from './pages/owner/MyListings.jsx'
 import BrowseListings from './pages/tenant/BrowseListings.jsx'
 import ProfilePage from './pages/tenant/ProfilePage.jsx'
+import Settings from './pages/Settings.jsx'
+import MyInterests from './pages/tenant/MyInterests.jsx'
+import InterestRequests from './pages/owner/InterestRequests.jsx'
 
 function App() {
   return (
@@ -44,10 +47,34 @@ function App() {
           }
         />
         <Route
+          path="/dashboard/tenant/interests"
+          element={
+            <RoleProtectedRoute allowedRoles={['tenant', 'admin']}>
+              <MyInterests />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/settings"
+          element={
+            <RoleProtectedRoute allowedRoles={['tenant', 'owner', 'admin']}>
+              <Settings />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
           path="/dashboard/owner"
           element={
             <RoleProtectedRoute allowedRoles={['owner', 'admin']}>
               <OwnerDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/owner/interests"
+          element={
+            <RoleProtectedRoute allowedRoles={['owner', 'admin']}>
+              <InterestRequests />
             </RoleProtectedRoute>
           }
         />

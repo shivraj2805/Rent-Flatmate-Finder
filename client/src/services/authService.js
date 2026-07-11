@@ -15,8 +15,20 @@ const me = async () => {
   return data
 }
 
+const updateProfile = async (payload) => {
+  const { data } = await api.put('/auth/profile', payload)
+  return data
+}
+
+const updatePassword = async (payload) => {
+  const { data } = await api.put('/auth/password', payload)
+  return data
+}
+
 export default {
   register,
   login,
   me,
+  updateProfile,
+  updatePassword,
 }
