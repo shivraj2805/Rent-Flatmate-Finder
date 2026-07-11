@@ -59,7 +59,6 @@ const tenantProfileSchema = new mongoose.Schema(
   { timestamps: true },
 )
 
-tenantProfileSchema.index({ user: 1 }, { unique: true })
 tenantProfileSchema.index({ moveInDate: 1, isSearching: 1 })
 
 module.exports = mongoose.model('TenantProfile', tenantProfileSchema)

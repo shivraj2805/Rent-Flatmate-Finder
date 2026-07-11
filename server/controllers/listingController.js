@@ -1,5 +1,6 @@
 const Listing = require('../models/Listing')
 const { createListing, updateListing, deleteImageFromCloudinary } = require('../services/listingService')
+const compatibilityService = require('../services/compatibilityService')
 
 const validateListingPayload = (payload, isUpdate = false) => {
   const requiredFields = ['title', 'description', 'location', 'rent', 'availableFrom', 'roomType']
@@ -70,10 +71,61 @@ const getAllListings = async (req, res, next) => {
 
     const listings = await Listing.find(query).sort({ createdAt: -1 })
 
+    let compatibilityMap = {}
+    if (req.user && (req.user.role === 'tenant' || req.user.role === 'admin')) {
+      const TenantProfile = require('../models/TenantProfile')
+      const Compatibility = require('../models/Compatibility')
+      const tenantProfile = await TenantProfile.findOne({ user: req.user._id })
+      if (tenantProfile) {
+        const compatibilities = await Compatibility.find({ tenantProfile: tenantProfile._id })
+        compatibilities.forEach((c) => {
+          compatibilityMap[c.listing.toString()] = {
+            score: c.score,
+            explanation: c.explanation,
+            source: c.source,
+          }
+        })
+
+        // Calculate missing scores on-the-fly
+        for (const l of listings) {
+          const lId = l._id.toString()
+          if (!compatibilityMap[lId]) {
+            const fallback = compatibilityService.calculateRuleBasedScore(l, tenantProfile)
+            compatibilityMap[lId] = {
+              score: fallback.score,
+              explanation: fallback.explanation,
+              source: 'rule-based-pending',
+            }
+            // Trigger background AI calculation
+            compatibilityService.evaluateAndSaveCompatibility(l._id, tenantProfile._id).catch((err) => {
+              console.error(`[On-The-Fly Eval Error] Listing ${l._id}:`, err.message)
+            })
+          }
+        }
+      }
+    }
+
+    const listingsWithScore = listings.map((l) => {
+      const obj = l.toObject()
+      obj.compatibility = compatibilityMap[l._id.toString()] || null
+      return obj
+    })
+
+    if (req.user && (req.user.role === 'tenant' || req.user.role === 'admin')) {
+      listingsWithScore.sort((a, b) => {
+        const scoreA = a.compatibility ? a.compatibility.score : -1
+        const scoreB = b.compatibility ? b.compatibility.score : -1
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt)
+      })
+    }
+
     res.json({
       success: true,
-      count: listings.length,
-      listings,
+      count: listingsWithScore.length,
+      listings: listingsWithScore,
     })
   } catch (error) {
     next(error)
@@ -138,6 +190,9 @@ const createNewListing = async (req, res, next) => {
       files: req.files || [],
     })
 
+    // Recalculate compatibility scores in the background
+    compatibilityService.recalculateForListing(listing._id)
+
     res.status(201).json({
       success: true,
       message: 'Listing created successfully',
@@ -173,6 +228,9 @@ const updateExistingListing = async (req, res, next) => {
       payload: req.body,
       files: req.files || [],
     })
+
+    // Recalculate compatibility scores in the background
+    compatibilityService.recalculateForListing(updatedListing._id)
 
     res.json({
       success: true,

@@ -29,7 +29,7 @@ const upsertProfile = async (userId, data) => {
         isSearching: data.isSearching !== undefined ? data.isSearching : true,
       },
     },
-    { new: true, upsert: true, runValidators: true }
+    { returnDocument: 'after', upsert: true, runValidators: true }
   )
   return profile
 }

@@ -9,9 +9,9 @@ const TenantProfile = require('../models/TenantProfile')
  * @returns {Promise<{score: number, explanation: string}>}
  */
 const generateAIScore = async (listing, profile) => {
-  const apiKey = process.env.GEMINI_API_KE
+  const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    throw new Error('GEMINI_API_KE environment variable is missing.')
+    throw new Error('GEMINI_API_KEY environment variable is missing.')
   }
 
   const promptText = `
@@ -40,7 +40,7 @@ Return ONLY a JSON object with this exact structure:
 }
 `
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -86,6 +86,99 @@ Return ONLY a JSON object with this exact structure:
 }
 
 /**
+ * Rule-based fallback compatibility score calculation
+ * @param {object} listing
+ * @param {object} profile
+ * @returns {{score: number, explanation: string}}
+ */
+const calculateRuleBasedScore = (listing, profile) => {
+  let budgetScore = 0
+  let locationScore = 0
+  let dateScore = 0
+
+  // 1. Budget Match (40 pts)
+  const rent = Number(listing.rent) || 0
+  const minBudget = Number(profile.budgetRange?.min) || 0
+  const maxBudget = Number(profile.budgetRange?.max) || 0
+
+  if (rent >= minBudget && rent <= maxBudget) {
+    budgetScore = 40
+  } else if (rent < minBudget) {
+    budgetScore = 40 // Cheaper is good
+  } else if (maxBudget > 0) {
+    const overage = rent - maxBudget
+    const pctOverage = overage / maxBudget
+    budgetScore = Math.max(0, 40 - Math.round(pctOverage * 40))
+  }
+
+  // 2. Location Match (40 pts)
+  const listingLoc = (listing.location || '').toLowerCase()
+  const preferredLocs = Array.isArray(profile.preferredLocations) ? profile.preferredLocations : []
+  const hasLocationMatch = preferredLocs.some((loc) => {
+    const cleanLoc = String(loc).toLowerCase().trim()
+    return cleanLoc && (listingLoc.includes(cleanLoc) || cleanLoc.includes(listingLoc))
+  })
+
+  if (hasLocationMatch) {
+    locationScore = 40
+  }
+
+  // 3. Move-in Date Match (20 pts)
+  const availableDate = new Date(listing.availableFrom)
+  const targetDate = new Date(profile.moveInDate)
+
+  if (!isNaN(availableDate.getTime()) && !isNaN(targetDate.getTime())) {
+    if (availableDate <= targetDate) {
+      dateScore = 20
+    } else {
+      const diffTime = Math.abs(availableDate - targetDate)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      if (diffDays <= 7) {
+        dateScore = 10
+      } else if (diffDays <= 14) {
+        dateScore = 5
+      } else {
+        dateScore = 0
+      }
+    }
+  } else {
+    dateScore = 20 // Fallback if dates are invalid
+  }
+
+  const score = budgetScore + locationScore + dateScore
+  
+  // Explanation text
+  const matchDetails = []
+  if (rent <= maxBudget) {
+    matchDetails.push(`Rent of ₹${rent.toLocaleString()} fits your budget range (up to ₹${maxBudget.toLocaleString()}).`)
+  } else {
+    matchDetails.push(`Rent of ₹${rent.toLocaleString()} exceeds your maximum budget of ₹${maxBudget.toLocaleString()}.`)
+  }
+
+  if (hasLocationMatch) {
+    matchDetails.push(`Listing location is in your preferred areas.`)
+  } else {
+    matchDetails.push(`Listing location is outside your preferred areas.`)
+  }
+
+  if (!isNaN(availableDate.getTime()) && !isNaN(targetDate.getTime())) {
+    if (availableDate <= targetDate) {
+      matchDetails.push(`Available on time (listed from ${availableDate.toLocaleDateString('en-IN')}).`)
+    } else {
+      const diffDays = Math.ceil(Math.abs(availableDate - targetDate) / (1000 * 60 * 60 * 24))
+      matchDetails.push(`Available ${diffDays} days after your target move-in date.`)
+    }
+  }
+
+  const explanation = `Rule-Based Evaluation: ${matchDetails.join(' ')}`
+
+  return {
+    score,
+    explanation,
+  }
+}
+
+/**
  * Evaluates compatibility and upserts to MongoDB
  */
 const evaluateAndSaveCompatibility = async (listingId, tenantProfileId) => {
@@ -95,21 +188,33 @@ const evaluateAndSaveCompatibility = async (listingId, tenantProfileId) => {
 
     if (!listing || !profile) return
 
-    const result = await generateAIScore(listing, profile)
+    let score, explanation, source
+    try {
+      const result = await generateAIScore(listing, profile)
+      score = result.score
+      explanation = result.explanation
+      source = 'ai'
+    } catch (aiError) {
+      console.warn(`[AI Compatibility Warning] AI calculation failed, falling back to rule-based:`, aiError.message)
+      const fallback = calculateRuleBasedScore(listing, profile)
+      score = fallback.score
+      explanation = fallback.explanation
+      source = 'rule-based'
+    }
 
     const compat = await Compatibility.findOneAndUpdate(
       { listing: listingId, tenantProfile: tenantProfileId },
       {
         $set: {
-          score: result.score,
-          explanation: result.explanation,
-          source: 'ai',
+          score,
+          explanation,
+          source,
           evaluatedAt: new Date(),
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
-    console.log(`[Compatibility] Evaluated AI score ${result.score}% for Listing ${listingId} and Profile ${tenantProfileId}`)
+    console.log(`[Compatibility] Evaluated ${source} score ${score}% for Listing ${listingId} and Profile ${tenantProfileId}`)
     return compat
   } catch (error) {
     console.error(`[Compatibility Error] Failed to evaluate for Listing ${listingId} and Profile ${tenantProfileId}:`, error.message)
@@ -161,6 +266,7 @@ const recalculateForListing = async (listingId) => {
 
 module.exports = {
   generateAIScore,
+  calculateRuleBasedScore,
   evaluateAndSaveCompatibility,
   recalculateForTenantProfile,
   recalculateForListing,

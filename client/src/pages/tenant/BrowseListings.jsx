@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Calendar, Building2, Search, SlidersHorizontal, IndianRupee, Eye, X, ChevronLeft, ChevronRight, Heart, Loader2, Check } from 'lucide-react'
+import { MapPin, Calendar, Building2, Search, SlidersHorizontal, IndianRupee, Eye, X, ChevronLeft, ChevronRight, Heart, Loader2, Check, Sparkles } from 'lucide-react'
 import listingService from '../../services/listingService.js'
 import interestService from '../../services/interestService.js'
 import useAuth from '../../hooks/useAuth.jsx'
@@ -24,6 +24,7 @@ const BrowseListings = () => {
   const [location, setLocation] = useState('')
   const [maxRent, setMaxRent] = useState('')
   const [roomType, setRoomType] = useState('')
+  const autoRefreshedRef = useRef(false)
 
   // Detailed Modal State
   const [selectedListing, setSelectedListing] = useState(null)
@@ -46,7 +47,25 @@ const BrowseListings = () => {
       if (roomType) params.roomType = roomType
 
       const response = await listingService.getAllListings(params)
-      setListings(response.listings || [])
+      const fetched = response.listings || []
+      setListings(fetched)
+
+      // Sync active modal details with newly fetched listing (for background compatibility score updates)
+      setSelectedListing((current) => {
+        if (!current) return null
+        const updated = fetched.find((l) => l._id === current._id)
+        return updated || current
+      })
+
+      // If we haven't already auto-refreshed, and some listings have pending AI calculations,
+      // trigger a single dynamic refresh after 3.5 seconds to pull the fresh scores
+      const hasPendingAI = fetched.some((l) => l.compatibility?.source === 'rule-based-pending')
+      if (hasPendingAI && !autoRefreshedRef.current) {
+        autoRefreshedRef.current = true
+        setTimeout(() => {
+          fetchListings()
+        }, 3500)
+      }
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Failed to fetch listings')
     } finally {
@@ -94,6 +113,7 @@ const BrowseListings = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault()
+    autoRefreshedRef.current = false
     fetchListings()
   }
 
@@ -102,6 +122,7 @@ const BrowseListings = () => {
     setLocation('')
     setMaxRent('')
     setRoomType('')
+    autoRefreshedRef.current = false
     // Re-fetch immediately
     setTimeout(() => {
       fetchListings()
@@ -275,6 +296,20 @@ const BrowseListings = () => {
                     {listing.furnished ? 'Furnished' : 'Unfurnished'}
                   </span>
                 </div>
+
+                {/* Compatibility Badge */}
+                {listing.compatibility && (
+                  <div className="absolute right-3 top-3">
+                    <span className={`rounded-xl px-2.5 py-1 text-[9px] font-bold text-white shadow-sm flex items-center gap-1 backdrop-blur-md ${
+                      listing.compatibility.score >= 80 ? 'bg-emerald-600/95' :
+                      listing.compatibility.score >= 50 ? 'bg-amber-500/95' :
+                      'bg-rose-500/95'
+                    }`}>
+                      <Sparkles className="h-3 w-3 fill-white/10 shrink-0" />
+                      {listing.compatibility.score}% Match
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Card Details */}
@@ -292,6 +327,16 @@ const BrowseListings = () => {
                 <p className="text-xs leading-relaxed text-slate-500 line-clamp-2">
                   {listing.description}
                 </p>
+
+                {/* Compatibility Explanation on Card */}
+                {listing.compatibility && (
+                  <div className="rounded-xl bg-indigo-50/50 border border-indigo-100/50 p-2.5 text-[10px] text-indigo-700 flex items-start gap-1.5 mt-1">
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                    <p className="line-clamp-2 leading-relaxed">
+                      {listing.compatibility.explanation}
+                    </p>
+                  </div>
+                )}
 
                 {/* Rent & Details button */}
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100">
@@ -411,6 +456,33 @@ const BrowseListings = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Compatibility Match Detail Panel */}
+              {selectedListing.compatibility && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4.5 w-4.5 text-indigo-600 shrink-0 animate-pulse" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-900" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                        Flatmate Compatibility Match
+                      </h4>
+                    </div>
+                    <span className={`rounded-xl px-2.5 py-1 text-xs font-bold text-white shadow-sm ${
+                      selectedListing.compatibility.score >= 80 ? 'bg-emerald-600' :
+                      selectedListing.compatibility.score >= 50 ? 'bg-amber-500' :
+                      'bg-rose-500'
+                    }`}>
+                      {selectedListing.compatibility.score}% Match
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-800 leading-relaxed font-medium">
+                    {selectedListing.compatibility.explanation}
+                  </p>
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-indigo-200/50 text-[9px] text-indigo-500 font-semibold uppercase tracking-wider">
+                    <span>Source: {selectedListing.compatibility.source === 'ai' ? 'Gemini AI Evaluation' : 'Rule-Based Fallback Engine'}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               <div className="space-y-2">
