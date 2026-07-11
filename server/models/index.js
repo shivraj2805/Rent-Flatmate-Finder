@@ -6,4 +6,5 @@ module.exports = {
   Interest: require('./Interest'),
   Chat: require('./Chat'),
   Message: require('./Message'),
+  ActivityLog: require('./ActivityLog'),
 }

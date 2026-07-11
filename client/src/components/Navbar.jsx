@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { House, LogOut, Bell, ChevronDown, User } from 'lucide-react'
+import { House, LogOut, Bell, ChevronDown, User, Shield } from 'lucide-react'
 import useAuth from '../hooks/useAuth.jsx'
 
 const Navbar = () => {
@@ -80,6 +80,16 @@ const Navbar = () => {
                     <User className="h-4 w-4 text-slate-400" />
                     My Profile
                   </Link>
+                  {user?.role === 'admin' && (
+                    <Link
+                      to="/admin/dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
+                    >
+                      <Shield className="h-4 w-4 text-indigo-500" />
+                      Admin Panel
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setMenuOpen(false); logout() }}

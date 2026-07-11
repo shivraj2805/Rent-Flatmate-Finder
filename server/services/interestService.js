@@ -1,6 +1,7 @@
 const Interest = require('../models/Interest')
 const Listing = require('../models/Listing')
 const TenantProfile = require('../models/TenantProfile')
+const { recordActivity } = require('./activityLogService')
 
 const createError = (message, statusCode) => {
   const error = new Error(message)
@@ -139,6 +140,12 @@ const respondToInterest = async ({ interestId, ownerId, status, responseMessage 
       },
       { upsert: true, returnDocument: 'after' }
     )
+
+    recordActivity({
+      action: 'chat_started',
+      userId: ownerId,
+      description: `Chat started for interest ${interestId} after acceptance`,
+    }).catch(() => {})
   }
 
   return savedInterest

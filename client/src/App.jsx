@@ -16,6 +16,9 @@ import Settings from './pages/Settings.jsx'
 import MyInterests from './pages/tenant/MyInterests.jsx'
 import InterestRequests from './pages/owner/InterestRequests.jsx'
 import ChatsPage from './pages/ChatsPage.jsx'
+import AdminDashboard from './pages/admin/AdminDashboard.jsx'
+import AdminLayout from './layouts/AdminLayout.jsx'
+import AdminProtectedRoute from './components/AdminProtectedRoute.jsx'
 
 function App() {
   return (
@@ -112,6 +115,24 @@ function App() {
           }
         />
       </Route>
+      <Route
+        path="/admin"
+        element={
+          <AdminProtectedRoute>
+            <AdminLayout />
+          </AdminProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="users" element={<AdminDashboard />} />
+        <Route path="listings" element={<AdminDashboard />} />
+        <Route path="interests" element={<AdminDashboard />} />
+        <Route path="chats" element={<AdminDashboard />} />
+        <Route path="activity" element={<AdminDashboard />} />
+        <Route path="settings" element={<AdminDashboard />} />
+      </Route>
+      <Route path="/dashboard/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -438,4 +438,3 @@ STOP.
 * Follow REST API conventions.
 * Do not generate placeholder code.
 * Every feature should be fully functional before moving to the next step.
-* At the end of each step, ask: **"Step X completed successfully. Would you like me to continue to Step X+1?"**

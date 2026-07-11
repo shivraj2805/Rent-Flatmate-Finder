@@ -1,5 +1,6 @@
 const interestService = require('../services/interestService')
 const asyncHandler = require('../middleware/asyncHandler')
+const { recordActivity } = require('../services/activityLogService')
 
 /**
  * @desc    Create a new interest request (tenant expresses interest)
@@ -19,6 +20,12 @@ const createInterestRequest = asyncHandler(async (req, res) => {
     listingId,
     tenantMessage,
   })
+
+  recordActivity({
+    action: 'interest_created',
+    userId: req.user._id,
+    description: `Tenant ${req.user.name} expressed interest in listing ${listingId}`,
+  }).catch(() => {})
 
   res.status(201).json({
     success: true,
@@ -68,6 +75,12 @@ const respondToInterest = asyncHandler(async (req, res) => {
     status,
     responseMessage,
   })
+
+  recordActivity({
+    action: `interest_${status}`,
+    userId: req.user._id,
+    description: `Owner ${req.user.name} ${status} interest request ${interestId}`,
+  }).catch(() => {})
 
   res.json({
     success: true,

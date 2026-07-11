@@ -1,6 +1,7 @@
 const Listing = require('../models/Listing')
 const { createListing, updateListing, deleteImageFromCloudinary } = require('../services/listingService')
 const compatibilityService = require('../services/compatibilityService')
+const { recordActivity } = require('../services/activityLogService')
 
 const validateListingPayload = (payload, isUpdate = false) => {
   const requiredFields = ['title', 'description', 'location', 'rent', 'availableFrom', 'roomType']
@@ -190,6 +191,12 @@ const createNewListing = async (req, res, next) => {
       files: req.files || [],
     })
 
+    recordActivity({
+      action: 'listing_created',
+      userId: req.user._id,
+      description: `Owner ${req.user.name} created listing "${listing.title}"`,
+    }).catch(() => {})
+
     // Recalculate compatibility scores in the background
     compatibilityService.recalculateForListing(listing._id)
 
@@ -229,6 +236,12 @@ const updateExistingListing = async (req, res, next) => {
       files: req.files || [],
     })
 
+    recordActivity({
+      action: 'listing_updated',
+      userId: req.user._id,
+      description: `Listing "${updatedListing.title}" was updated by ${req.user.name}`,
+    }).catch(() => {})
+
     // Recalculate compatibility scores in the background
     compatibilityService.recalculateForListing(updatedListing._id)
 
@@ -265,6 +278,14 @@ const updateListingStatus = async (req, res, next) => {
     listing.status = status
     await listing.save()
 
+    if (status === 'filled') {
+      recordActivity({
+        action: 'listing_filled',
+        userId: req.user._id,
+        description: `Listing "${listing.title}" was marked filled by ${req.user.name}`,
+      }).catch(() => {})
+    }
+
     res.json({
       success: true,
       message: `Listing marked as ${status} successfully`,
@@ -297,6 +318,12 @@ const deleteListing = async (req, res, next) => {
     }
 
     await listing.deleteOne()
+
+    recordActivity({
+      action: 'listing_deleted',
+      userId: req.user._id,
+      description: `Listing "${listing.title}" was deleted by ${req.user.name}`,
+    }).catch(() => {})
 
     res.json({
       success: true,

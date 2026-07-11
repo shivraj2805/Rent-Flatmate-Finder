@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs')
 const User = require('../models/User')
 const generateToken = require('../utils/generateToken')
+const { recordActivity } = require('./activityLogService')
 
 const createError = (message, statusCode) => {
   const error = new Error(message)
@@ -37,6 +38,12 @@ const register = async ({ name, email, password, role }) => {
     password: hashedPassword,
     role: role || 'tenant',
   })
+
+  recordActivity({
+    action: 'user_registered',
+    userId: user._id,
+    description: `User ${user.name} registered as ${user.role}`,
+  }).catch(() => {})
 
   return {
     token: generateToken({ id: user._id, role: user.role }),

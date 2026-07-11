@@ -9,6 +9,7 @@ import {
   Heart,
   MessageSquare,
   Settings,
+  Shield,
 } from 'lucide-react'
 import useAuth from '../hooks/useAuth.jsx'
 
@@ -78,6 +79,13 @@ const Sidebar = () => {
             <NavItem to="/dashboard/tenant/profile" icon={UserCircle} label="My Profile" />
             <NavItem to="/dashboard/tenant/interests" icon={Heart} label="My Interests" />
             <NavItem to="/dashboard/tenant/chats" icon={MessageSquare} label="My Chats" />
+          </>
+        )}
+
+        {user?.role === 'admin' && (
+          <>
+            <SectionLabel label="Admin Tools" />
+            <NavItem to="/admin/dashboard" icon={Shield} label="Admin Dashboard" />
           </>
         )}
 
