@@ -26,6 +26,7 @@ const upsertProfile = async (userId, data) => {
         roomPreferences: data.roomPreferences || [],
         lifestylePreferences: data.lifestylePreferences || [],
         bio: data.bio || '',
+        gender: data.gender,
         isSearching: data.isSearching !== undefined ? data.isSearching : true,
       },
     },

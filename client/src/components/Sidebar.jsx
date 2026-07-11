@@ -52,7 +52,7 @@ const Sidebar = () => {
   const isTenantOrAdmin = user?.role === 'tenant' || user?.role === 'admin'
 
   return (
-    <aside className="hidden w-64 flex-shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col">
+    <aside className="hidden w-64 flex-shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col sticky top-16 h-[calc(100vh-4rem)]">
       <nav className="flex-1 overflow-y-auto p-4">
         {/* Overview */}
         <SectionLabel label="Overview" />
@@ -66,6 +66,7 @@ const Sidebar = () => {
             <NavItem to="/dashboard/owner/listings" icon={List} label="My Listings" />
             <NavItem to="/dashboard/owner/listings/new" icon={PlusSquare} label="Add Listing" />
             <NavItem to="/dashboard/owner/interests" icon={Heart} label="Interest Requests" />
+            <NavItem to="/dashboard/tenant/chats" icon={MessageSquare} label="My Chats" />
           </>
         )}
 

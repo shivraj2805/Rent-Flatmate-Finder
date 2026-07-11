@@ -73,7 +73,7 @@ const Navbar = () => {
                 </div>
                 <div className="p-2">
                   <Link
-                    to="/dashboard"
+                    to={user?.role === 'tenant' ? '/dashboard/tenant/profile' : '/dashboard/settings'}
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   >

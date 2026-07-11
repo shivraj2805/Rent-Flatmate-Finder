@@ -33,6 +33,17 @@ const createInterest = async ({ tenantId, listingId, tenantMessage }) => {
     throw createError('You have already expressed interest in this listing', 409)
   }
 
+  // Validate gender matching if listing has gender preference
+  if (listing.genderPreference && listing.genderPreference !== 'any') {
+    const profile = await TenantProfile.findOne({ user: tenantId })
+    if (!profile) {
+      throw createError('Please create a tenant profile before expressing interest', 400)
+    }
+    if (profile.gender !== listing.genderPreference) {
+      throw createError(`This room has a gender preference of ${listing.genderPreference}. Your profile gender (${profile.gender}) does not match.`, 400)
+    }
+  }
+
   // Create interest request
   return Interest.create({
     tenant: tenantId,
@@ -69,8 +80,19 @@ const getInterestsByOwner = async (ownerId) => {
       if (interest.tenant) {
         const tenantProfile = await TenantProfile.findOne({ user: interest.tenant._id })
         plainInterest.tenantProfile = tenantProfile || null
+        if (tenantProfile) {
+          const Compatibility = require('../models/Compatibility')
+          const compatibility = await Compatibility.findOne({
+            listing: interest.listing._id,
+            tenantProfile: tenantProfile._id,
+          })
+          plainInterest.compatibility = compatibility || null
+        } else {
+          plainInterest.compatibility = null
+        }
       } else {
         plainInterest.tenantProfile = null
+        plainInterest.compatibility = null
       }
       return plainInterest
     })
@@ -101,7 +123,25 @@ const respondToInterest = async ({ interestId, ownerId, status, responseMessage 
   interest.ownerResponseMessage = responseMessage ? responseMessage.trim() : ''
   interest.respondedAt = new Date()
 
-  return interest.save()
+  const savedInterest = await interest.save()
+
+  if (status === 'accepted') {
+    const Chat = require('../models/Chat')
+    await Chat.findOneAndUpdate(
+      { interest: interestId },
+      {
+        $set: {
+          listing: interest.listing,
+          tenant: interest.tenant,
+          owner: interest.owner,
+          interest: interestId,
+        },
+      },
+      { upsert: true, returnDocument: 'after' }
+    )
+  }
+
+  return savedInterest
 }
 
 module.exports = {

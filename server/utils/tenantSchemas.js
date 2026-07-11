@@ -26,6 +26,7 @@ const tenantProfileSchema = Joi.object({
   roomPreferences: Joi.array().items(Joi.string().trim()).default([]),
   lifestylePreferences: Joi.array().items(Joi.string().trim()).default([]),
   bio: Joi.string().trim().max(1000).allow('').default(''),
+  gender: Joi.string().valid('male', 'female', 'other').default('other').required(),
   isSearching: Joi.boolean().default(true),
 })
 

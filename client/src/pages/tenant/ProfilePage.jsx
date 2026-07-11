@@ -46,6 +46,7 @@ const ProfilePage = () => {
   const [roomPreferences, setRoomPreferences] = useState([])
   const [lifestylePreferences, setLifestylePreferences] = useState([])
   const [newLifestyleTag, setNewLifestyleTag] = useState('')
+  const [gender, setGender] = useState('other')
   const [isSearching, setIsSearching] = useState(true)
 
   const fetchProfile = async () => {
@@ -73,6 +74,7 @@ const ProfilePage = () => {
         setBio(prof.bio || '')
         setRoomPreferences(prof.roomPreferences || [])
         setLifestylePreferences(prof.lifestylePreferences || [])
+        setGender(prof.gender || 'other')
         setIsSearching(prof.isSearching !== undefined ? prof.isSearching : true)
       } else {
         setProfile(null)
@@ -175,6 +177,7 @@ const ProfilePage = () => {
         roomPreferences,
         lifestylePreferences,
         bio,
+        gender,
         isSearching,
       }
 
@@ -206,6 +209,7 @@ const ProfilePage = () => {
       setBio(profile.bio || '')
       setRoomPreferences(profile.roomPreferences || [])
       setLifestylePreferences(profile.lifestylePreferences || [])
+      setGender(profile.gender || 'other')
       setIsSearching(profile.isSearching !== undefined ? profile.isSearching : true)
       setIsEditing(false)
     } else {
@@ -392,7 +396,7 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Move-in Date */}
-                <div className="sm:col-span-2 space-y-1.5">
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Target Move-in Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
@@ -403,6 +407,20 @@ const ProfilePage = () => {
                       className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
+                </div>
+
+                {/* Gender Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Gender</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
               </div>
 
@@ -591,6 +609,14 @@ const ProfilePage = () => {
                       month: 'long',
                       year: 'numeric',
                     })}
+                  </p>
+                </div>
+
+                {/* Gender */}
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Gender</h4>
+                  <p className="text-sm font-bold text-slate-800 capitalize">
+                    {profile.gender || 'other'}
                   </p>
                 </div>
               </div>

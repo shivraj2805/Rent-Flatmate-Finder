@@ -50,6 +50,12 @@ const tenantProfileSchema = new mongoose.Schema(
       maxlength: 1000,
       default: '',
     },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other'],
+      default: 'other',
+      required: [true, 'Gender is required'],
+    },
     isSearching: {
       type: Boolean,
       default: true,

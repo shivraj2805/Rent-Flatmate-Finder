@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes')
 const listingRoutes = require('./routes/listingRoutes')
 const tenantRoutes = require('./routes/tenantRoutes')
 const interestRoutes = require('./routes/interestRoutes')
+const chatRoutes = require('./routes/chatRoutes')
 const { notFound, errorHandler } = require('./middleware/errorMiddleware')
 
 const app = express()
@@ -44,10 +45,9 @@ app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingRoutes)
 app.use('/api/tenant', tenantRoutes)
 app.use('/api/interests', interestRoutes)
+app.use('/api/chats', chatRoutes)
 
 app.use(notFound)
 app.use(errorHandler)
-
-module.exports = app
 
 module.exports = app

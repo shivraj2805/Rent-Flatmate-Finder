@@ -15,6 +15,7 @@ import ProfilePage from './pages/tenant/ProfilePage.jsx'
 import Settings from './pages/Settings.jsx'
 import MyInterests from './pages/tenant/MyInterests.jsx'
 import InterestRequests from './pages/owner/InterestRequests.jsx'
+import ChatsPage from './pages/ChatsPage.jsx'
 
 function App() {
   return (
@@ -51,6 +52,14 @@ function App() {
           element={
             <RoleProtectedRoute allowedRoles={['tenant', 'admin']}>
               <MyInterests />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/tenant/chats"
+          element={
+            <RoleProtectedRoute allowedRoles={['tenant', 'owner', 'admin']}>
+              <ChatsPage />
             </RoleProtectedRoute>
           }
         />

@@ -236,6 +236,28 @@ const InterestRequests = () => {
                       </p>
                     </div>
 
+                    {/* Compatibility Score (Step 11 requirement) */}
+                    {req.compatibility && (
+                      <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="h-4 w-4 text-indigo-600 animate-pulse" />
+                            <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider">Tenant Compatibility Match</span>
+                          </div>
+                          <span className={`rounded-xl px-2 py-0.5 text-[10px] font-bold text-white shadow-sm ${
+                            req.compatibility.score >= 80 ? 'bg-emerald-600' :
+                            req.compatibility.score >= 50 ? 'bg-amber-500' :
+                            'bg-rose-500'
+                          }`}>
+                            {req.compatibility.score}% Match
+                          </span>
+                        </div>
+                        <p className="text-xs text-indigo-800 leading-relaxed font-medium">
+                          {req.compatibility.explanation}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Tenant Profile details (Step 6 fields) */}
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
