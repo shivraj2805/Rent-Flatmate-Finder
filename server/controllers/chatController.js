@@ -37,13 +37,13 @@ const getMessages = asyncHandler(async (req, res) => {
  * @access  Private
  */
 const sendMessage = asyncHandler(async (req, res) => {
-  const { content } = req.body
+  const { content, replyToId } = req.body
   if (!content || !content.trim()) {
     res.status(400)
     throw new Error('Message content cannot be empty')
   }
 
-  const message = await chatService.saveMessage(req.params.id, req.user._id, content)
+  const message = await chatService.saveMessage(req.params.id, req.user._id, content, replyToId)
 
   // Real-time broadcast using Socket.IO
   const io = req.app.get('io')

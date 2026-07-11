@@ -13,6 +13,29 @@ const createError = (message, statusCode) => {
  * @returns {Promise<Array>}
  */
 const getUserChats = async (userId) => {
+  // Auto-heal missing chat rooms for previously accepted interests
+  const Interest = require('../models/Interest')
+  try {
+    const acceptedInterests = await Interest.find({
+      status: 'accepted',
+      $or: [{ tenant: userId }, { owner: userId }],
+    })
+
+    for (const interest of acceptedInterests) {
+      const chatExists = await Chat.findOne({ interest: interest._id })
+      if (!chatExists) {
+        await Chat.create({
+          listing: interest.listing,
+          tenant: interest.tenant,
+          owner: interest.owner,
+          interest: interest._id,
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[Chat Auto-Heal Error] Failed to verify accepted interests chats:', err.message)
+  }
+
   return Chat.find({
     $or: [{ tenant: userId }, { owner: userId }],
   })
@@ -49,6 +72,10 @@ const getChatMessages = async (chatId, userId) => {
 
   return Message.find({ chat: chatId })
     .populate('sender', 'name avatar')
+    .populate({
+      path: 'replyTo',
+      populate: { path: 'sender', select: 'name' }
+    })
     .sort({ createdAt: 1 })
 }
 
@@ -59,7 +86,7 @@ const getChatMessages = async (chatId, userId) => {
  * @param {string} content
  * @returns {Promise<Message>}
  */
-const saveMessage = async (chatId, senderId, content) => {
+const saveMessage = async (chatId, senderId, content, replyToId = null) => {
   const chat = await Chat.findById(chatId)
   if (!chat) {
     throw createError('Chat room not found', 404)
@@ -78,6 +105,7 @@ const saveMessage = async (chatId, senderId, content) => {
     chat: chatId,
     sender: senderId,
     content: content.trim(),
+    replyTo: replyToId || null,
   })
 
   // Update chat details
@@ -86,7 +114,12 @@ const saveMessage = async (chatId, senderId, content) => {
   await chat.save()
 
   // Return fully populated message
-  return Message.findById(message._id).populate('sender', 'name avatar')
+  return Message.findById(message._id)
+    .populate('sender', 'name avatar')
+    .populate({
+      path: 'replyTo',
+      populate: { path: 'sender', select: 'name' }
+    })
 }
 
 module.exports = {

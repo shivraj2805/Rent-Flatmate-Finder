@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { io } from 'socket.io-client'
 import {
-  MessageSquare, Send, User, Building2, MapPin, Loader2, Sparkles, AlertCircle
+  MessageSquare, Send, User, Building2, MapPin, Loader2, Sparkles, AlertCircle, ChevronLeft, Info, Calendar, X, CornerUpLeft
 } from 'lucide-react'
 import chatService from '../services/chatService.js'
 import useAuth from '../hooks/useAuth.jsx'
@@ -18,13 +18,26 @@ const ChatsPage = () => {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [error, setError] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [partnerTyping, setPartnerTyping] = useState(false)
+  const [partnerTypingName, setPartnerTypingName] = useState('')
+  
+  // Custom states for enhancements
+  const [showChatPaneMobile, setShowChatPaneMobile] = useState(false)
+  const [showListingInfo, setShowListingInfo] = useState(false)
+  const [replyToMessage, setReplyToMessage] = useState(null)
 
   const socketRef = useRef(null)
   const messagesEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  
+  // Ref to always track the latest selectedChat inside socket event closures
+  const selectedChatRef = useRef(null)
+  const currentUserId = user?.id || user?._id
 
-  // 1. Initialize Socket.IO connection
+  useEffect(() => {
+    selectedChatRef.current = selectedChat
+  }, [selectedChat])
+
+  // 1. Initialize Socket.IO connection once on mount
   useEffect(() => {
     socketRef.current = io(SOCKET_URL, {
       withCredentials: true,
@@ -39,7 +52,7 @@ const ChatsPage = () => {
       setMessages((prev) => {
         const exists = prev.some((m) => m._id === message._id)
         if (exists) return prev
-        if (message.chat === selectedChat?._id) {
+        if (message.chat === selectedChatRef.current?._id) {
           return [...prev, message]
         }
         return prev
@@ -55,12 +68,12 @@ const ChatsPage = () => {
       )
     })
 
-    socketRef.current.on('typing', () => {
-      setPartnerTyping(true)
+    socketRef.current.on('typing', ({ userName }) => {
+      setPartnerTypingName(userName || 'Partner')
     })
 
     socketRef.current.on('stop_typing', () => {
-      setPartnerTyping(false)
+      setPartnerTypingName('')
     })
 
     return () => {
@@ -68,15 +81,29 @@ const ChatsPage = () => {
         socketRef.current.disconnect()
       }
     }
-  }, [selectedChat])
+  }, [])
 
-  // 2. Fetch chats list
+  // 2. Fetch chats list and handle interestId query param auto-selection
   const fetchChats = async () => {
     setLoadingChats(true)
     try {
       const response = await chatService.getChats()
       if (response.success) {
-        setChats(response.chats || [])
+        const chatsList = response.chats || []
+        setChats(chatsList)
+
+        // Read query parameter
+        const queryParams = new URLSearchParams(window.location.search)
+        const interestIdParam = queryParams.get('interestId')
+        
+        if (interestIdParam && chatsList.length > 0) {
+          const matchingChat = chatsList.find((c) => 
+            c.interest?._id === interestIdParam || c.interest === interestIdParam
+          )
+          if (matchingChat) {
+            handleSelectChat(matchingChat)
+          }
+        }
       }
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load chats')
@@ -91,18 +118,23 @@ const ChatsPage = () => {
 
   // 3. Select chat and load message history
   const handleSelectChat = async (chat) => {
-    if (selectedChat) {
-      socketRef.current.emit('leave_room', selectedChat._id)
+    if (selectedChatRef.current && socketRef.current) {
+      socketRef.current.emit('leave_room', selectedChatRef.current._id)
     }
 
     setSelectedChat(chat)
     setMessages([])
     setNewMessage('')
-    setPartnerTyping(false)
+    setPartnerTypingName('')
+    setShowListingInfo(false)
+    setReplyToMessage(null)
+    setShowChatPaneMobile(true) // Switch to chat pane on mobile view
     setLoadingMessages(true)
 
     // Join room
-    socketRef.current.emit('join_room', chat._id)
+    if (socketRef.current) {
+      socketRef.current.emit('join_room', chat._id)
+    }
 
     try {
       const response = await chatService.getMessages(chat._id)
@@ -121,7 +153,7 @@ const ChatsPage = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages, partnerTyping])
+  }, [messages, partnerTypingName])
 
   // 5. Send message
   const handleSendMessage = async (e) => {
@@ -129,7 +161,10 @@ const ChatsPage = () => {
     if (!newMessage.trim() || !selectedChat) return
 
     const messageText = newMessage
+    const replyId = replyToMessage?._id
+    
     setNewMessage('')
+    setReplyToMessage(null)
 
     // Stop typing immediately on send
     if (socketRef.current) {
@@ -138,8 +173,7 @@ const ChatsPage = () => {
     }
 
     try {
-      await chatService.sendMessage(selectedChat._id, messageText)
-      // Note: receive_message socket event will catch it and add to state
+      await chatService.sendMessage(selectedChat._id, messageText, replyId)
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to send message')
     }
@@ -163,14 +197,18 @@ const ChatsPage = () => {
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      socketRef.current.emit('stop_typing', { roomId: selectedChat._id })
+      if (socketRef.current && selectedChatRef.current) {
+        socketRef.current.emit('stop_typing', { roomId: selectedChatRef.current._id })
+      }
       setIsTyping(false)
     }, 2000)
   }
 
   // 7. Get user display partner
   const getChatPartner = (chat) => {
-    if (user?._id === chat.tenant?._id) {
+    const tenantId = chat.tenant?._id || chat.tenant
+
+    if (currentUserId && tenantId && String(currentUserId) === String(tenantId)) {
       return {
         name: chat.owner?.name || 'Owner',
         email: chat.owner?.email,
@@ -187,9 +225,11 @@ const ChatsPage = () => {
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col md:flex-row h-[calc(100vh-8rem)]">
+    <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden flex h-[calc(100vh-8rem)]">
       {/* Chats Sidebar (Left Pane) */}
-      <div className="w-full md:w-80 border-r border-slate-200 flex flex-col shrink-0 bg-slate-50/50">
+      <div className={`w-full md:w-80 border-r border-slate-200 flex flex-col shrink-0 bg-slate-50/50 ${
+        showChatPaneMobile ? 'hidden md:flex' : 'flex'
+      }`}>
         <div className="p-4 border-b border-slate-200 bg-white">
           <h2 className="text-md font-bold text-slate-800 flex items-center gap-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
             <MessageSquare className="h-5 w-5 text-indigo-600" />
@@ -221,6 +261,10 @@ const ChatsPage = () => {
                 ? new Date(chat.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : ''
 
+              // Identify unread messages
+              const isLastMsgFromPartner = chat.lastMessage && String(chat.lastMessage.sender?._id || chat.lastMessage.sender) !== String(currentUserId)
+              const isUnread = isLastMsgFromPartner && !isSelected
+
               return (
                 <button
                   key={chat._id}
@@ -229,24 +273,29 @@ const ChatsPage = () => {
                     isSelected ? 'bg-indigo-50/80 border border-indigo-100/50 shadow-sm' : 'hover:bg-slate-100 border border-transparent'
                   }`}
                 >
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                    {partner.initials}
+                  <div className="relative shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                      {partner.initials}
+                    </div>
+                    {isUnread && (
+                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-indigo-600 border-2 border-white animate-pulse" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 truncate leading-tight">
+                      <span className={`text-xs truncate leading-tight ${isUnread ? 'font-black text-indigo-950' : 'font-bold text-slate-800'}`}>
                         {partner.name}
                       </span>
                       {lastMsgTime && (
-                        <span className="text-[9px] text-slate-400 font-semibold shrink-0">
+                        <span className={`text-[9px] font-semibold shrink-0 ${isUnread ? 'text-indigo-600' : 'text-slate-400'}`}>
                           {lastMsgTime}
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-indigo-600 font-medium truncate block leading-tight mt-0.5">
+                    <span className="text-[10px] text-indigo-600 font-semibold truncate block leading-tight mt-0.5">
                       Room: {chat.listing?.title}
                     </span>
-                    <p className="text-[10px] text-slate-400 truncate mt-1">
+                    <p className={`text-[10px] truncate mt-1 ${isUnread ? 'font-bold text-slate-700' : 'text-slate-400'}`}>
                       {lastMsgText}
                     </p>
                   </div>
@@ -258,7 +307,9 @@ const ChatsPage = () => {
       </div>
 
       {/* Main Conversation Window (Right Pane) */}
-      <div className="flex-1 flex flex-col bg-white">
+      <div className={`flex-1 flex flex-col bg-white ${
+        !showChatPaneMobile ? 'hidden md:flex' : 'flex'
+      }`}>
         {selectedChat ? (
           <>
             {/* Conversation Header */}
@@ -266,32 +317,72 @@ const ChatsPage = () => {
               const partner = getChatPartner(selectedChat)
               const listing = selectedChat.listing || {}
               return (
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between shadow-sm bg-slate-50/20">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md">
-                      {partner.initials}
+                <div className="p-4 border-b border-slate-200 flex flex-col bg-slate-50/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {/* Mobile Back Button */}
+                      <button
+                        onClick={() => setShowChatPaneMobile(false)}
+                        className="md:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-700 transition hover:bg-slate-100 rounded-xl"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md">
+                        {partner.initials}
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                          {partner.name}
+                          <span className="rounded bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-indigo-700">
+                            {partner.role}
+                          </span>
+                        </h3>
+                        <p className="text-[10px] text-slate-400">{partner.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                        {partner.name}
-                        <span className="rounded bg-indigo-50 border border-indigo-100 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-indigo-700">
-                          {partner.role}
-                        </span>
-                      </h3>
-                      <p className="text-[10px] text-slate-400">{partner.email}</p>
+
+                    {/* Room Details & Actions Toggle */}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden sm:block">
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Property</span>
+                        <p className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[180px]">
+                          {listing.title}
+                        </p>
+                      </div>
+                      
+                      <button
+                        onClick={() => setShowListingInfo(!showListingInfo)}
+                        className={`p-1.5 rounded-xl border transition cursor-pointer ${
+                          showListingInfo ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
+                        }`}
+                        title="Toggle Listing Info"
+                      >
+                        <Info className="h-4.5 w-4.5" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Room Details Badge */}
-                  <div className="text-right hidden sm:block">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Property</span>
-                    <p className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[180px]">
-                      {listing.title}
-                    </p>
-                    <p className="text-[10px] text-indigo-600 font-bold">
-                      ₹{listing.rent?.toLocaleString()}/mo
-                    </p>
-                  </div>
+                  {/* Sleek Slide-out Listing Info Pane */}
+                  {showListingInfo && (
+                    <div className="mt-3 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100/50 text-xs text-indigo-900 grid gap-3 sm:grid-cols-3 animate-fadeIn">
+                      <div>
+                        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Rent Rate</span>
+                        <p className="text-sm font-extrabold text-indigo-700 mt-0.5">₹{listing.rent?.toLocaleString()} / month</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Room Type</span>
+                        <p className="text-xs font-bold text-indigo-800 capitalize mt-0.5">{listing.roomType?.replace('-', ' ')}</p>
+                      </div>
+                      <div className="sm:col-span-3 pt-2 border-t border-indigo-100/60 flex items-start gap-1">
+                        <MapPin className="h-3.5 w-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Location</span>
+                          <p className="text-xs font-semibold text-indigo-800 mt-0.5">{listing.location}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })()}
@@ -305,23 +396,46 @@ const ChatsPage = () => {
                 </div>
               ) : (
                 messages.map((msg) => {
-                  const isOwn = msg.sender?._id === user?._id || msg.sender === user?._id
+                  const isOwn = String(msg.sender?._id || msg.sender) === String(currentUserId)
                   return (
                     <div
                       key={msg._id}
                       className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[70%] space-y-0.5`}>
-                        <div className={`rounded-2xl px-3.5 py-2 text-xs shadow-sm ${
-                          isOwn ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
-                        }`}>
-                          <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      <div className={`max-w-[70%] flex items-center gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Message Bubble Container */}
+                        <div className="space-y-0.5 flex-1 min-w-0">
+                          <div className={`rounded-2xl px-3.5 py-2 text-xs shadow-sm ${
+                            isOwn ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
+                          }`}>
+                            {/* Reply Quote Banner Inside Bubble */}
+                            {msg.replyTo && (
+                              <div className={`border-l-4 pl-2 py-1 pr-1.5 mb-1.5 rounded text-[10px] ${
+                                isOwn ? 'bg-white/10 border-indigo-200 text-indigo-100' : 'bg-slate-100/70 border-indigo-500 text-slate-600'
+                              }`}>
+                                <span className={`font-bold block ${isOwn ? 'text-white' : 'text-indigo-900'}`}>
+                                  {msg.replyTo.sender?.name || 'User'}
+                                </span>
+                                <span className="line-clamp-1">{msg.replyTo.content}</span>
+                              </div>
+                            )}
+                            <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                          <span className={`text-[8px] text-slate-400 font-semibold block px-1 ${
+                            isOwn ? 'text-right' : 'text-left'
+                          }`}>
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
-                        <span className={`text-[8px] text-slate-400 font-semibold block px-1 ${
-                          isOwn ? 'text-right' : 'text-left'
-                        }`}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+
+                        {/* Reply Trigger Icon (Visible on hover) */}
+                        <button
+                          onClick={() => setReplyToMessage(msg)}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition p-1 hover:bg-slate-100 rounded-lg shrink-0 self-center cursor-pointer"
+                          title="Reply to this message"
+                        >
+                          <CornerUpLeft className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
                   )
@@ -329,11 +443,11 @@ const ChatsPage = () => {
               )}
 
               {/* Partner Typing status */}
-              {partnerTyping && (
+              {partnerTypingName && (
                 <div className="flex justify-start">
-                  <div className="max-w-[70%] rounded-2xl px-3.5 py-2 text-[10px] italic bg-slate-100 text-slate-500 border border-slate-200 rounded-bl-none flex items-center gap-1 shadow-sm">
+                  <div className="max-w-[70%] rounded-2xl px-3.5 py-2 text-[10px] italic bg-slate-100 text-slate-500 border border-slate-200 rounded-bl-none flex items-center gap-1.5 shadow-sm">
                     <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
-                    typing...
+                    {partnerTypingName} is typing...
                   </div>
                 </div>
               )}
@@ -349,11 +463,31 @@ const ChatsPage = () => {
               </div>
             )}
 
+            {/* Enhancement: Message Quoted Preview above input box */}
+            {replyToMessage && (
+              <div className="bg-slate-50 border-t border-slate-200/80 px-4 py-2 text-[11px] flex items-center justify-between gap-4 animate-slideUp">
+                <div className="border-l-4 border-indigo-500 pl-2 min-w-0">
+                  <p className="font-bold text-indigo-950">
+                    Replying to {replyToMessage.sender?.name || (String(replyToMessage.sender) === String(currentUserId) ? 'Myself' : 'Partner')}
+                  </p>
+                  <p className="text-slate-500 truncate mt-0.5">{replyToMessage.content}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyToMessage(null)}
+                  className="text-slate-400 hover:text-slate-600 transition p-1 hover:bg-slate-200/60 rounded-lg cursor-pointer"
+                  title="Cancel reply"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
             {/* Compose Input Box */}
             <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 bg-white flex gap-2">
               <input
                 type="text"
-                placeholder="Type your message..."
+                placeholder={replyToMessage ? "Type your reply..." : "Type your message..."}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}

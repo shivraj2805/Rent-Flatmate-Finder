@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Heart, MapPin, Calendar, Check, X,
   Clock, AlertCircle, Info, User, ChevronDown, ChevronUp, Sparkles, Loader2, MessageSquare
@@ -221,6 +222,16 @@ const InterestRequests = () => {
                           <Check className="h-4.5 w-4.5" />
                         </button>
                       </div>
+                    )}
+
+                    {req.status === 'accepted' && (
+                      <Link
+                        to={`/dashboard/tenant/chats?interestId=${req._id}`}
+                        className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer shadow-sm hover:shadow"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Chat
+                      </Link>
                     )}
                   </div>
                 </div>

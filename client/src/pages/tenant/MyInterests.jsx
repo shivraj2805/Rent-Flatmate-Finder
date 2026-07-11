@@ -189,7 +189,7 @@ const MyInterests = () => {
                       <div className="flex items-center gap-2">
                         {interest.status === 'accepted' ? (
                           <Link
-                            to="/dashboard/tenant/chats"
+                            to={`/dashboard/tenant/chats?interestId=${interest._id}`}
                             className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white transition cursor-pointer shadow-sm"
                           >
                             <MessageSquare className="h-3.5 w-3.5" />
