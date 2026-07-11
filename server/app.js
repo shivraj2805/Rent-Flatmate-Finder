@@ -4,6 +4,7 @@ const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
 const authRoutes = require('./routes/authRoutes')
 const listingRoutes = require('./routes/listingRoutes')
+const tenantRoutes = require('./routes/tenantRoutes')
 const { notFound, errorHandler } = require('./middleware/errorMiddleware')
 
 const app = express()
@@ -40,8 +41,11 @@ const authLimiter = rateLimit({
 
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingRoutes)
+app.use('/api/tenant', tenantRoutes)
 
 app.use(notFound)
 app.use(errorHandler)
+
+module.exports = app
 
 module.exports = app

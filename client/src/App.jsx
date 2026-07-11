@@ -11,6 +11,7 @@ import AddListing from './pages/owner/AddListing.jsx'
 import EditListing from './pages/owner/EditListing.jsx'
 import MyListings from './pages/owner/MyListings.jsx'
 import BrowseListings from './pages/tenant/BrowseListings.jsx'
+import ProfilePage from './pages/tenant/ProfilePage.jsx'
 
 function App() {
   return (
@@ -31,6 +32,14 @@ function App() {
           element={
             <RoleProtectedRoute allowedRoles={['tenant', 'admin', 'owner']}>
               <BrowseListings />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/tenant/profile"
+          element={
+            <RoleProtectedRoute allowedRoles={['tenant', 'admin']}>
+              <ProfilePage />
             </RoleProtectedRoute>
           }
         />

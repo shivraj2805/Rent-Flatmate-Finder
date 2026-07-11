@@ -79,9 +79,49 @@ const getUserById = async (userId) => {
   return sanitizeUser(user)
 }
 
+const updateProfile = async (userId, { name, email }) => {
+  const user = await User.findById(userId)
+  if (!user) {
+    throw createError('User not found', 404)
+  }
+
+  if (email && email.toLowerCase().trim() !== user.email) {
+    const emailExists = await User.findOne({ email: email.toLowerCase().trim() })
+    if (emailExists) {
+      throw createError('Email is already in use', 409)
+    }
+    user.email = email.toLowerCase().trim()
+  }
+
+  if (name) {
+    user.name = name.trim()
+  }
+
+  await user.save()
+  return sanitizeUser(user)
+}
+
+const updatePassword = async (userId, { currentPassword, newPassword }) => {
+  const user = await User.findById(userId).select('+password')
+  if (!user) {
+    throw createError('User not found', 404)
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password)
+  if (!isMatch) {
+    throw createError('Current password is incorrect', 400)
+  }
+
+  user.password = await bcrypt.hash(newPassword, 12)
+  await user.save()
+  return true
+}
+
 module.exports = {
   register,
   login,
   getUserById,
   sanitizeUser,
+  updateProfile,
+  updatePassword,
 }

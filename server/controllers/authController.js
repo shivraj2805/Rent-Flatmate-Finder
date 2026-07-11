@@ -60,6 +60,25 @@ const getAdminOnlyDemo = asyncHandler(async (req, res) => {
   })
 })
 
+const updateProfileUser = asyncHandler(async (req, res) => {
+  const user = await authService.updateProfile(req.user._id, req.body)
+
+  res.json({
+    success: true,
+    message: 'Profile updated successfully',
+    user,
+  })
+})
+
+const updatePasswordUser = asyncHandler(async (req, res) => {
+  await authService.updatePassword(req.user._id, req.body)
+
+  res.json({
+    success: true,
+    message: 'Password updated successfully',
+  })
+})
+
 module.exports = {
   registerUser,
   loginUser,
@@ -68,4 +87,6 @@ module.exports = {
   getTenantOnlyDemo,
   getOwnerOnlyDemo,
   getAdminOnlyDemo,
+  updateProfileUser,
+  updatePasswordUser,
 }
