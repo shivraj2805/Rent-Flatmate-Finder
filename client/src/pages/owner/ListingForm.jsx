@@ -331,7 +331,7 @@ const ListingForm = ({ initialValues = defaultForm, submitting, onSubmit, submit
         <button
           type="submit"
           disabled={submitting}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-50 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-500 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? (
             <>

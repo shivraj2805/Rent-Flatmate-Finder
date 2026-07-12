@@ -25,6 +25,7 @@ const BrowseListings = () => {
   const [location, setLocation] = useState('')
   const [maxRent, setMaxRent] = useState('')
   const [roomType, setRoomType] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   const autoRefreshedRef = useRef(false)
 
   // Detailed Modal State
@@ -153,27 +154,59 @@ const BrowseListings = () => {
 
       {/* Filter / Search Bar */}
       <form onSubmit={handleSearchSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-          <SlidersHorizontal className="h-4.5 w-4.5 text-indigo-500" />
-          <span>Filters & Search</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+            <SlidersHorizontal className="h-4.5 w-4.5 text-indigo-500" />
+            <span>Filters & Search</span>
+          </div>
+          {/* Mobile Filter Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex lg:hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
+          </button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end">
-          {/* Keyword Search */}
-          <div className="space-y-1.5">
+        {/* Search Row - Always Visible */}
+        <div className="grid gap-4 lg:grid-cols-5 items-end">
+          <div className="lg:col-span-4 space-y-1.5">
             <label className="text-xs font-semibold text-slate-500">Search Keywords</label>
             <div className="relative">
               <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="e.g. WiFi, AC, Cozy"
+                placeholder="e.g. WiFi, AC, Cozy, Kothrud"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
             </div>
           </div>
+          <div className="hidden lg:flex gap-2">
+            <button
+              type="submit"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-100 transition hover:bg-indigo-500 cursor-pointer"
+            >
+              <Search className="h-4 w-4" />
+              Search
+            </button>
+            {(search || location || maxRent || roomType) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
 
+        {/* Collapsible / Responsive Grid for other filters */}
+        <div className={`mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end ${showFilters ? 'grid' : 'hidden lg:grid'}`}>
           {/* Location Filter */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-500">Location / Area</label>
@@ -221,14 +254,14 @@ const BrowseListings = () => {
             </select>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
+          {/* Mobile Actions block */}
+          <div className="flex gap-2 lg:hidden pt-2">
             <button
               type="submit"
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-100 transition hover:bg-indigo-500 hover:scale-[1.01] cursor-pointer"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-100 transition hover:bg-indigo-500 cursor-pointer"
             >
               <Search className="h-4 w-4" />
-              Search
+              Apply
             </button>
             {(search || location || maxRent || roomType) && (
               <button

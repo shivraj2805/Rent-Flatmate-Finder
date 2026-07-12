@@ -545,7 +545,7 @@ const ChatsPage = () => {
                       key={msg._id}
                       className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[70%] flex items-center gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div className={`max-w-[85%] md:max-w-[70%] flex items-center gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
                         <div className="space-y-0.5 flex-1 min-w-0">
                           <div className={`rounded-2xl px-3.5 py-2 text-xs shadow-sm ${
                             isOwn ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
@@ -587,7 +587,7 @@ const ChatsPage = () => {
               {/* Partner Typing status */}
               {partnerTypingName && (
                 <div className="flex justify-start">
-                  <div className="max-w-[70%] rounded-2xl px-3.5 py-2 text-[10px] italic bg-slate-100 text-slate-500 border border-slate-200 rounded-bl-none flex items-center gap-2 shadow-sm animate-pulse">
+                  <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-3.5 py-2 text-[10px] italic bg-slate-100 text-slate-500 border border-slate-200 rounded-bl-none flex items-center gap-2 shadow-sm animate-pulse">
                     <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
                     {partnerTypingName} is typing...
                   </div>
