@@ -21,7 +21,7 @@ const chatService = {
    * Post a new message
    */
   sendMessage: async (chatId, content, replyToId = null) => {
-    const response = await api.post(`/chats/${chatId}/messages`, { content, replyToId })
+    const response = await api.post('/messages', { chatId, content, replyToId })
     return response.data
   },
 }

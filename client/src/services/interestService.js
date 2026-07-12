@@ -28,7 +28,7 @@ const getMyInterests = async () => {
  * @returns {Promise<object>} response data containing updated interest
  */
 const respondToInterest = async (interestId, status, responseMessage) => {
-  const { data } = await api.patch(`/interests/${interestId}/status`, { status, responseMessage })
+  const { data } = await api.patch(`/interests/${interestId}`, { status, responseMessage })
   return data
 }
 

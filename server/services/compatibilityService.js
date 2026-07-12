@@ -349,6 +349,27 @@ const evaluateAndSaveCompatibility = async (listingId, tenantProfileId) => {
       { upsert: true, returnDocument: 'after' }
     )
     console.log(`[Compatibility] Evaluated (${scoringMethod}) score ${score}% for Listing ${listingId} and Profile ${tenantProfileId}`)
+
+    // Dispatch email if score > 80
+    if (score > 80) {
+      try {
+        const emailService = require('./emailService')
+        const User = require('../models/User')
+
+        const owner = await User.findById(listing.owner)
+        const tenant = await User.findById(profile.user)
+
+        if (owner && tenant) {
+          // Fire-and-forget email dispatch
+          emailService.sendHighCompatibilityEmail(owner, tenant, listing, score, explanation).catch((err) => {
+            console.error(`[Compatibility Email Error] Async send failed:`, err.message)
+          })
+        }
+      } catch (mailErr) {
+        console.error(`[Compatibility Email Error] Failed to prepare high match notification:`, mailErr.message)
+      }
+    }
+
     return compat
   } catch (error) {
     console.error(`[Compatibility Error] Failed to evaluate for Listing ${listingId} and Profile ${tenantProfileId}:`, error.message)

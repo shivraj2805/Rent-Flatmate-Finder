@@ -156,9 +156,58 @@ const updateListing = async ({ listing, payload, files }) => {
   return listing.save()
 }
 
+/**
+ * Delete a listing and cascade clean up associated Compatibility, Interest, Chat, and Message records
+ */
+const deleteListingById = async (listingId) => {
+  const Compatibility = require('../models/Compatibility')
+  const Interest = require('../models/Interest')
+  const Chat = require('../models/Chat')
+  const Message = require('../models/Message')
+
+  const listing = await Listing.findById(listingId)
+  if (!listing) {
+    const error = new Error('Listing not found')
+    error.statusCode = 404
+    throw error
+  }
+
+  // 1. Delete associated images from Cloudinary
+  if (Array.isArray(listing.images)) {
+    for (const image of listing.images) {
+      if (image.publicId) {
+        await deleteImageFromCloudinary(image.publicId)
+      }
+    }
+  }
+
+  // 2. Cascade delete Compatibility records
+  await Compatibility.deleteMany({
+    $or: [{ listing: listingId }, { listingId }]
+  })
+
+  // 3. Cascade delete Interest requests
+  await Interest.deleteMany({ listing: listingId })
+
+  // 4. Cascade delete Chats and Message records
+  const chats = await Chat.find({ listing: listingId })
+  for (const chat of chats) {
+    await Message.deleteMany({
+      $or: [{ chat: chat._id }, { chatId: chat._id }]
+    })
+    await chat.deleteOne()
+  }
+
+  // 5. Delete listing
+  await listing.deleteOne()
+
+  return { success: true }
+}
+
 module.exports = {
   createListing,
   updateListing,
   parseListField,
   deleteImageFromCloudinary,
+  deleteListingById,
 }

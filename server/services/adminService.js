@@ -6,7 +6,7 @@ const Interest = require('../models/Interest')
 const Chat = require('../models/Chat')
 const Message = require('../models/Message')
 const ActivityLog = require('../models/ActivityLog')
-const { deleteImageFromCloudinary } = require('./listingService')
+const { deleteImageFromCloudinary, deleteListingById } = require('./listingService')
 
 const createError = (message, statusCode) => {
   const error = new Error(message)
@@ -308,33 +308,7 @@ const toggleListingStatus = async (listingId, isActive) => {
  * Delete a listing and cascade cleans up related records
  */
 const deleteListing = async (listingId) => {
-  const listing = await Listing.findById(listingId)
-  if (!listing) {
-    throw createError('Listing not found', 404)
-  }
-
-  if (Array.isArray(listing.images)) {
-    for (const image of listing.images) {
-      await deleteImageFromCloudinary(image.publicId || image.url)
-    }
-  }
-
-  // 1. Delete compatibility scoring
-  await Compatibility.deleteMany({ listing: listingId })
-
-  // 2. Delete interest requests
-  await Interest.deleteMany({ listing: listingId })
-
-  // 3. Delete chat rooms and messages
-  const listingChats = await Chat.find({ listing: listingId })
-  for (const chat of listingChats) {
-    await Message.deleteMany({ chat: chat._id })
-  }
-  await Chat.deleteMany({ listing: listingId })
-
-  // 4. Delete listing itself
-  await Listing.findByIdAndDelete(listingId)
-
+  await deleteListingById(listingId)
   return { success: true }
 }
 

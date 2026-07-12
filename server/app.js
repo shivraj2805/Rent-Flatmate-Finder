@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes')
 const listingRoutes = require('./routes/listingRoutes')
 const tenantRoutes = require('./routes/tenantRoutes')
 const interestRoutes = require('./routes/interestRoutes')
+const compatibilityRoutes = require('./routes/compatibilityRoutes')
 const chatRoutes = require('./routes/chatRoutes')
 const adminRoutes = require('./routes/adminRoutes')
 const notificationRoutes = require('./routes/notificationRoutes')
@@ -46,8 +47,11 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingRoutes)
 app.use('/api/tenant', tenantRoutes)
+app.use('/api/profile', tenantRoutes) // Aliased to tenantRoutes for GET/PUT /api/profile
 app.use('/api/interests', interestRoutes)
+app.use('/api/compatibility', compatibilityRoutes)
 app.use('/api/chats', chatRoutes)
+app.use('/api', chatRoutes) // Aliased for root messages endpoints like POST /api/messages
 app.use('/api/admin', adminRoutes)
 app.use('/api/notifications', notificationRoutes)
 

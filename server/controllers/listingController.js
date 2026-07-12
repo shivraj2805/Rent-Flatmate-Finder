@@ -1,5 +1,5 @@
 const Listing = require('../models/Listing')
-const { createListing, updateListing, deleteImageFromCloudinary } = require('../services/listingService')
+const { createListing, updateListing, deleteImageFromCloudinary, deleteListingById } = require('../services/listingService')
 const compatibilityService = require('../services/compatibilityService')
 const { recordActivity } = require('../services/activityLogService')
 
@@ -329,14 +329,7 @@ const deleteListing = async (req, res, next) => {
       throw new Error('Not authorized to delete this listing')
     }
 
-    // Delete associated images from Cloudinary
-    if (listing.images && listing.images.length > 0) {
-      for (const imgUrl of listing.images) {
-        await deleteImageFromCloudinary(imgUrl)
-      }
-    }
-
-    await listing.deleteOne()
+    await deleteListingById(listing._id)
 
     recordActivity({
       action: 'listing_deleted',

@@ -2,14 +2,28 @@ const express = require('express')
 const { getMyProfile, updateOrCreateProfile } = require('../controllers/tenantController')
 const { protect, authorizeRoles } = require('../middleware/authMiddleware')
 const validateRequest = require('../middleware/validationMiddleware')
-const { tenantProfileSchema } = require('../utils/tenantSchemas')
+const { tenantProfileSchema } = require('../validators/tenantValidators')
 
 const router = express.Router()
 
-// Any logged-in user can check their own tenant profile status
-router.get('/profile', protect, getMyProfile)
+// Root endpoints (mapped via app.use('/api/profile', tenantRoutes))
+router.get('/', protect, getMyProfile)
+router.put(
+  '/',
+  protect,
+  authorizeRoles('tenant', 'admin'),
+  validateRequest({ body: tenantProfileSchema }),
+  updateOrCreateProfile
+)
 
-// Only users with 'tenant' or 'admin' roles can create/update the tenant profile
-router.put('/profile', protect, authorizeRoles('tenant', 'admin'), validateRequest(tenantProfileSchema), updateOrCreateProfile)
+// Legacy endpoints (mapped via app.use('/api/tenant', tenantRoutes))
+router.get('/profile', protect, getMyProfile)
+router.put(
+  '/profile',
+  protect,
+  authorizeRoles('tenant', 'admin'),
+  validateRequest({ body: tenantProfileSchema }),
+  updateOrCreateProfile
+)
 
 module.exports = router

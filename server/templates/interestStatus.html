@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interest Request Update</title>
+  <style>
+    body {
+      font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #334155;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #f8fafc;
+      padding: 30px 15px;
+    }
+    .container {
+      max-width: 580px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 20px;
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .header {
+      padding: 40px 30px;
+      text-align: center;
+      color: #ffffff;
+    }
+    .header.accepted {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    }
+    .header.declined {
+      background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+    }
+    .header p {
+      margin: 10px 0 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .content {
+      padding: 30px;
+    }
+    .status-card {
+      text-align: center;
+      margin-bottom: 25px;
+      padding: 15px;
+      border-radius: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+    .status-card.accepted {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .status-card.declined {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .detail-section {
+      margin-bottom: 25px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0 10px 0;
+    }
+    .btn {
+      display: inline-block;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 30px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+    }
+    .btn.accepted {
+      background-color: #059669;
+    }
+    .btn.declined {
+      background-color: #64748b;
+    }
+    .footer {
+      background-color: #f8fafc;
+      padding: 20px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header {{statusClass}}">
+        <h1>Request Update</h1>
+        <p>Your interest request status has been updated</p>
+      </div>
+      <div class="content">
+        <div class="status-card {{statusClass}}">
+          Interest request is {{status}}
+        </div>
+        <div class="detail-section">
+          <p>Hi <strong>{{tenantName}}</strong>,</p>
+          <p>The owner <strong>{{ownerName}}</strong> has updated the status of your interest request for listing <strong>"{{listingTitle}}"</strong>.</p>
+          
+          {{#if responseMessage}}
+          <p><strong>Owner Response Message:</strong></p>
+          <blockquote style="margin: 15px 0; padding-left: 15px; border-left: 4px solid #64748b; font-style: italic; color: #475569;">
+            {{responseMessage}}
+          </blockquote>
+          {{/if}}
+
+          {{#if isAccepted}}
+          <p>🎉 Directly messaging the owner has been unlocked for you! You can now access the chat room to discuss moving details.</p>
+          {{/if}}
+        </div>
+        <div class="button-container">
+          <a href="{{link}}" class="btn {{statusClass}}">
+            {{#if isAccepted}}Open Chat Room{{else}}View Details{{/if}}
+          </a>
+        </div>
+      </div>
+      <div class="footer">
+        This is an automated notification from RoomSync. Please do not reply directly to this mail.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

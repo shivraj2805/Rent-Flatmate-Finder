@@ -1,5 +1,6 @@
 const chatService = require('../services/chatService')
 const asyncHandler = require('../middleware/asyncHandler')
+const { ValidationError } = require('../utils/customErrors')
 
 /**
  * @desc    Get user's chat rooms
@@ -37,22 +38,28 @@ const getMessages = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Send a message in a chat
- * @route   POST /api/chats/:id/messages
+ * @route   POST /api/chats/:id/messages OR POST /api/messages
  * @access  Private
  */
 const sendMessage = asyncHandler(async (req, res) => {
-  const { content, replyToId } = req.body
-  if (!content || !content.trim()) {
-    res.status(400)
-    throw new Error('Message content cannot be empty')
+  const chatId = req.params.id || req.body.chatId
+  const { content, message: messageText, replyToId } = req.body
+  const text = content || messageText
+
+  if (!chatId) {
+    throw new ValidationError('Chat ID is required')
   }
 
-  const message = await chatService.saveMessage(req.params.id, req.user._id, content, replyToId)
+  if (!text || !text.trim()) {
+    throw new ValidationError('Message content cannot be empty')
+  }
+
+  const message = await chatService.saveMessage(chatId, req.user._id, text, replyToId)
 
   // Real-time broadcast using Socket.IO to the room members
   const io = req.app.get('io')
   if (io) {
-    io.to(req.params.id).emit('receive_message', message)
+    io.to(chatId).emit('receive_message', message)
   }
 
   res.status(201).json({

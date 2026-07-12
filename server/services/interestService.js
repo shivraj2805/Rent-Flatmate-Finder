@@ -202,6 +202,19 @@ const respondToInterest = async ({ interestId, ownerId, status, responseMessage 
     }).catch(() => {})
   }
 
+  // Trigger email notification to tenant
+  try {
+    const emailService = require('./emailService')
+    const tenantUser = await User.findById(interest.tenant)
+    if (tenantUser && ownerUser && listingObj) {
+      emailService.sendInterestStatusEmail(tenantUser, ownerUser, listingObj, status, responseMessage).catch((err) => {
+        console.error(`[Interest Email Dispatch Error]:`, err.message)
+      })
+    }
+  } catch (err) {
+    console.error(`[Interest Email Setup Error]:`, err.message)
+  }
+
   return savedInterest
 }
 

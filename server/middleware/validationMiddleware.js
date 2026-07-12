@@ -1,17 +1,38 @@
-const validateRequest = (schema) => {
-  return (req, res, next) => {
-    const { error, value } = schema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    })
+const { ValidationError } = require('../utils/customErrors')
 
-    if (error) {
-      res.status(400)
-      const errorMessage = error.details.map((detail) => detail.message).join(', ')
-      return next(new Error(errorMessage))
+/**
+ * Reusable validation middleware using Joi
+ * @param {object} schemas - Object containing Joi schemas for body, query, or params
+ * @returns {Function} Express middleware function
+ */
+const validateRequest = (schemas) => {
+  return (req, res, next) => {
+    const errors = []
+    const targets = ['body', 'query', 'params']
+
+    for (const target of targets) {
+      if (schemas[target]) {
+        const { error, value } = schemas[target].validate(req[target], {
+          abortEarly: false,
+          stripUnknown: true,
+          allowUnknown: true, // Allow custom extra parameters
+        })
+
+        if (error) {
+          error.details.forEach((detail) => {
+            errors.push(detail.message.replace(/"/g, ''))
+          })
+        } else {
+          req[target] = value // Update request fields with validated / parsed values
+        }
+      }
     }
 
-    req.body = value
+    if (errors.length > 0) {
+      // Pass ValidationError directly to Express error handler
+      return next(new ValidationError('Validation failed', errors))
+    }
+
     next()
   }
 }

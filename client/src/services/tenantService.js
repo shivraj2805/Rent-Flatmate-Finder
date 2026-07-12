@@ -5,7 +5,7 @@ import api from './api'
  * @returns {Promise<object>} response data containing profile
  */
 const getProfile = async () => {
-  const { data } = await api.get('/tenant/profile')
+  const { data } = await api.get('/profile')
   return data
 }
 
@@ -15,7 +15,7 @@ const getProfile = async () => {
  * @returns {Promise<object>} response data containing updated profile
  */
 const updateProfile = async (payload) => {
-  const { data } = await api.put('/tenant/profile', payload)
+  const { data } = await api.put('/profile', payload)
   return data
 }
 
