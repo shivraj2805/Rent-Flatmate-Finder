@@ -33,7 +33,7 @@ const AdminSidebar = ({ mobileOpen = false, onClose = () => {} }) => {
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 transform border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 lg:static lg:z-auto lg:flex lg:w-72 lg:flex-col lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-40 w-72 transform border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:z-auto lg:flex lg:w-72 lg:flex-col lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 lg:px-6">
           <div className="flex items-center gap-2.5">

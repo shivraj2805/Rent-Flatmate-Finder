@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import authService from '../services/authService'
 
 export const AuthContext = createContext(null)
@@ -14,6 +15,7 @@ const readStoredAuth = () => {
 }
 
 export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate()
   const storedAuth = readStoredAuth()
   const [user, setUser] = useState(storedAuth.user)
   const [token, setToken] = useState(storedAuth.token)
@@ -84,6 +86,7 @@ export const AuthProvider = ({ children }) => {
     setError('')
     localStorage.removeItem('rentFlatmateToken')
     localStorage.removeItem('rentFlatmateUser')
+    navigate('/')
   }
 
   const updateUser = (updatedUser) => {

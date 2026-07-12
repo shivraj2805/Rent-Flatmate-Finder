@@ -132,7 +132,6 @@ function App() {
         <Route path="activity" element={<AdminDashboard />} />
         <Route path="settings" element={<AdminDashboard />} />
       </Route>
-      <Route path="/dashboard/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

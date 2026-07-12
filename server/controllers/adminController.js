@@ -234,6 +234,88 @@ const getActivity = asyncHandler(async (req, res) => {
   })
 })
 
+const bulkUpdateUserStatus = asyncHandler(async (req, res) => {
+  const { userIds, isActive } = req.body
+  if (!Array.isArray(userIds) || isActive === undefined) {
+    res.status(400)
+    throw new Error('userIds (array) and isActive status are required')
+  }
+
+  const result = await adminService.bulkUpdateUserStatus(userIds, isActive)
+  recordActivity({
+    action: 'admin_users_bulk_status_updated',
+    userId: req.user._id,
+    description: `Admin ${req.user.name} bulk ${isActive ? 'unblocked' : 'blocked'} ${userIds.length} users`,
+  }).catch(() => {})
+
+  res.json({
+    success: true,
+    message: `Successfully bulk updated users status to ${isActive ? 'active' : 'blocked'}.`,
+    ...result,
+  })
+})
+
+const bulkDeleteUsers = asyncHandler(async (req, res) => {
+  const { userIds } = req.body
+  if (!Array.isArray(userIds)) {
+    res.status(400)
+    throw new Error('userIds (array) is required')
+  }
+
+  await adminService.bulkDeleteUsers(userIds)
+  recordActivity({
+    action: 'admin_users_bulk_deleted',
+    userId: req.user._id,
+    description: `Admin ${req.user.name} bulk deleted ${userIds.length} users and their associated data`,
+  }).catch(() => {})
+
+  res.json({
+    success: true,
+    message: `Successfully bulk deleted ${userIds.length} users and all associated records.`,
+  })
+})
+
+const bulkUpdateListingStatus = asyncHandler(async (req, res) => {
+  const { listingIds, isActive } = req.body
+  if (!Array.isArray(listingIds) || isActive === undefined) {
+    res.status(400)
+    throw new Error('listingIds (array) and isActive status are required')
+  }
+
+  const result = await adminService.bulkUpdateListingStatus(listingIds, isActive)
+  recordActivity({
+    action: 'admin_listings_bulk_status_updated',
+    userId: req.user._id,
+    description: `Admin ${req.user.name} bulk changed status of ${listingIds.length} listings`,
+  }).catch(() => {})
+
+  res.json({
+    success: true,
+    message: `Successfully bulk updated listings status to ${isActive ? 'active' : 'inactive'}.`,
+    ...result,
+  })
+})
+
+const bulkDeleteListings = asyncHandler(async (req, res) => {
+  const { listingIds } = req.body
+  if (!Array.isArray(listingIds)) {
+    res.status(400)
+    throw new Error('listingIds (array) is required')
+  }
+
+  await adminService.bulkDeleteListings(listingIds)
+  recordActivity({
+    action: 'admin_listings_bulk_deleted',
+    userId: req.user._id,
+    description: `Admin ${req.user.name} bulk deleted ${listingIds.length} listings and their associated data`,
+  }).catch(() => {})
+
+  res.json({
+    success: true,
+    message: `Successfully bulk deleted ${listingIds.length} listings and all associated records.`,
+  })
+})
+
 module.exports = {
   getStats,
   getDashboard,
@@ -252,4 +334,8 @@ module.exports = {
   getChatMessages,
   deleteChat,
   getActivity,
+  bulkUpdateUserStatus,
+  bulkDeleteUsers,
+  bulkUpdateListingStatus,
+  bulkDeleteListings,
 }

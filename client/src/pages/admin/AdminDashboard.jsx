@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   BarChart3,
   Building2,
@@ -14,6 +15,21 @@ import {
   UserCog,
   Users,
   X,
+  Download,
+  Activity,
+  Check,
+  Ban,
+  RefreshCw,
+  FileDown,
+  Mail,
+  Calendar,
+  AlertTriangle,
+  User,
+  ExternalLink,
+  MessageCircle,
+  Lock,
+  Save,
+  AlertCircle,
 } from 'lucide-react'
 import {
   BarChart,
@@ -31,6 +47,8 @@ import {
   YAxis,
 } from 'recharts'
 import adminService from '../../services/adminService.js'
+import authService from '../../services/authService.js'
+import useAuth from '../../hooks/useAuth.jsx'
 import AdminStatCard from '../../components/admin/AdminStatCard.jsx'
 import AdminSearchBar from '../../components/admin/AdminSearchBar.jsx'
 import AdminPagination from '../../components/admin/AdminPagination.jsx'
@@ -46,7 +64,7 @@ const tabs = [
   { key: 'settings', label: 'Settings', icon: Shield },
 ]
 
-const roleColors = ['#0f172a', '#4f46e5', '#10b981', '#f97316']
+const roleColors = ['#4f46e5', '#10b981', '#f97316', '#ef4444']
 
 const getActiveTabFromPath = (pathname) => {
   const segment = pathname.split('/').filter(Boolean).at(-1)
@@ -72,8 +90,26 @@ const paginate = (items, page, pageSize) => {
   return { items: items.slice(start, start + pageSize), totalPages, page: safePage }
 }
 
+// Sleek glassmorphic custom chart tooltip
+const CustomChartTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-2xl border border-slate-200/50 bg-white/90 p-4 shadow-xl backdrop-blur-md">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        {payload.map((item, idx) => (
+          <p key={idx} className="mt-1 text-sm font-extrabold" style={{ color: item.color || item.fill }}>
+            {item.name}: <span className="text-slate-900 font-semibold">{item.value}</span>
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 const AdminDashboard = () => {
   const location = useLocation()
+  const { user, updateUser } = useAuth()
   const [activeTab, setActiveTab] = useState(getActiveTabFromPath(location.pathname))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -105,10 +141,37 @@ const AdminDashboard = () => {
   const [chatMessages, setChatMessages] = useState([])
   const [chatLoading, setChatLoading] = useState(false)
 
+  // Advanced auditor details sub-navigation
+  const [auditorTab, setAuditorTab] = useState('overview')
+
+  // Live polling mode
+  const [liveMode, setLiveMode] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Checkbox selections for bulk actions
+  const [selectedUserIds, setSelectedUserIds] = useState([])
+  const [selectedListingIds, setSelectedListingIds] = useState([])
+
+  // Profile Info state
+  const [profileName, setProfileName] = useState(user?.name || '')
+  const [profileEmail, setProfileEmail] = useState(user?.email || '')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileError, setProfileError] = useState('')
+  const [profileSuccess, setProfileSuccess] = useState('')
+
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+
   const pageSize = 8
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true)
+    else setIsRefreshing(true)
     setError('')
 
     try {
@@ -132,6 +195,7 @@ const AdminDashboard = () => {
       setError(requestError?.response?.data?.message || 'Failed to load admin data')
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -143,11 +207,159 @@ const AdminDashboard = () => {
     loadData()
   }, [])
 
+  // Sync settings inputs when user details are retrieved/updated
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name || '')
+      setProfileEmail(user.email || '')
+    }
+  }, [user])
+
+  // Live Mode polling loop
+  useEffect(() => {
+    if (!liveMode) return
+    const interval = setInterval(() => {
+      loadData(true)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [liveMode])
+
+  // Clear selections when tab changes
+  useEffect(() => {
+    setSelectedUserIds([])
+    setSelectedListingIds([])
+  }, [activeTab])
+
   const refresh = async (message = '') => {
-    if (message) setSuccessMsg(message)
-    await loadData()
+    if (message) {
+      setSuccessMsg(message)
+      setTimeout(() => setSuccessMsg(''), 4000)
+    }
+    await loadData(true)
   }
 
+  // Settings Handlers
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault()
+    setProfileError('')
+    setProfileSuccess('')
+
+    if (!profileName.trim()) {
+      setProfileError('Name cannot be empty')
+      return
+    }
+
+    if (!profileEmail.trim()) {
+      setProfileError('Email cannot be empty')
+      return
+    }
+
+    setProfileSaving(true)
+    try {
+      const response = await authService.updateProfile({ name: profileName, email: profileEmail })
+      if (response.success) {
+        setProfileSuccess(response.message || 'Profile details updated!')
+        updateUser(response.user)
+      }
+    } catch (err) {
+      setProfileError(err?.response?.data?.message || 'Failed to update profile')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    if (!currentPassword) {
+      setPasswordError('Current password is required')
+      return
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+
+    setPasswordSaving(true)
+    try {
+      const response = await authService.updatePassword({ currentPassword, newPassword })
+      if (response.success) {
+        setPasswordSuccess(response.message || 'Password changed successfully!')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      }
+    } catch (err) {
+      setPasswordError(err?.response?.data?.message || 'Failed to update password')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
+  // Bulk Operations
+  const handleBulkUserStatus = async (isActive) => {
+    const actionText = isActive ? 'unblock' : 'block'
+    if (!window.confirm(`Are you sure you want to bulk ${actionText} ${selectedUserIds.length} users?`)) return
+    try {
+      const response = await adminService.bulkUpdateUserStatus(selectedUserIds, isActive)
+      if (response.success) {
+        setSelectedUserIds([])
+        await refresh(response.message || `Successfully bulk ${actionText}ed users.`)
+      }
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Failed to update users status')
+    }
+  }
+
+  const handleBulkDeleteUsers = async () => {
+    if (!window.confirm(`DANGER! Delete ${selectedUserIds.length} users? This permanently deletes their accounts, listings, chats, and profiles!`)) return
+    try {
+      const response = await adminService.bulkDeleteUsers(selectedUserIds)
+      if (response.success) {
+        setSelectedUserIds([])
+        await refresh(response.message || 'Successfully bulk deleted users.')
+      }
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Failed to delete users')
+    }
+  }
+
+  const handleBulkListingStatus = async (isActive) => {
+    const actionText = isActive ? 'activate' : 'deactivate'
+    if (!window.confirm(`Are you sure you want to bulk ${actionText} ${selectedListingIds.length} listings?`)) return
+    try {
+      const response = await adminService.bulkUpdateListingStatus(selectedListingIds, isActive)
+      if (response.success) {
+        setSelectedListingIds([])
+        await refresh(response.message || `Successfully bulk ${actionText}d listings.`)
+      }
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Failed to update listings status')
+    }
+  }
+
+  const handleBulkDeleteListings = async () => {
+    if (!window.confirm(`Are you sure you want to bulk delete ${selectedListingIds.length} listings?`)) return
+    try {
+      const response = await adminService.bulkDeleteListings(selectedListingIds)
+      if (response.success) {
+        setSelectedListingIds([])
+        await refresh(response.message || 'Successfully bulk deleted listings.')
+      }
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Failed to delete listings')
+    }
+  }
+
+  // Single entity actions
   const handleUpdateUserRole = async (userId, role) => {
     try {
       const response = await adminService.updateUserRole(userId, role)
@@ -229,6 +441,115 @@ const AdminDashboard = () => {
     }
   }
 
+  // CSV Exporter helper
+  const handleExportCSV = (type) => {
+    let headers = []
+    let data = []
+    let filename = `roomsync_${type}_export_${Date.now()}.csv`
+
+    if (type === 'users') {
+      headers = ['ID', 'Name', 'Email', 'Role', 'Status', 'CreatedAt']
+      data = filteredUsers.map(u => ({
+        ID: u._id,
+        Name: u.name,
+        Email: u.email,
+        Role: u.role,
+        Status: u.isActive ? 'Active' : 'Blocked',
+        CreatedAt: new Date(u.createdAt).toISOString()
+      }))
+    } else if (type === 'listings') {
+      headers = ['ID', 'Title', 'Location', 'Rent', 'Owner', 'Status', 'CreatedAt']
+      data = filteredListings.map(l => ({
+        ID: l._id,
+        Title: l.title,
+        Location: l.location,
+        Rent: l.rent,
+        Owner: l.owner?.name || 'Unknown',
+        Status: l.status === 'filled' ? 'Filled' : l.isActive ? 'Active' : 'Hidden',
+        CreatedAt: new Date(l.createdAt).toISOString()
+      }))
+    } else if (type === 'interests') {
+      headers = ['ID', 'Tenant', 'TenantEmail', 'Owner', 'Listing', 'Score', 'Status', 'CreatedAt']
+      data = filteredInterests.map(i => ({
+        ID: i._id,
+        Tenant: i.tenant?.name || '',
+        TenantEmail: i.tenant?.email || '',
+        Owner: i.owner?.name || '',
+        Listing: i.listing?.title || '',
+        Score: i.compatibility?.score ?? '',
+        Status: i.status,
+        CreatedAt: new Date(i.createdAt).toISOString()
+      }))
+    } else if (type === 'chats') {
+      headers = ['ID', 'Owner', 'Tenant', 'Listing', 'LastMessage', 'LastActive']
+      data = filteredChats.map(c => ({
+        ID: c._id,
+        Owner: c.owner?.name || '',
+        Tenant: c.tenant?.name || '',
+        Listing: c.listing?.title || '',
+        LastMessage: c.lastMessage?.content || '',
+        LastActive: new Date(c.lastMessageAt || c.updatedAt).toISOString()
+      }))
+    } else if (type === 'activity') {
+      headers = ['ID', 'Action', 'Description', 'User', 'Role', 'CreatedAt']
+      data = filteredActivity.map(a => ({
+        ID: a._id,
+        Action: a.action,
+        Description: a.description,
+        User: a.user?.name || 'System',
+        Role: a.user?.role || 'system',
+        CreatedAt: new Date(a.createdAt).toISOString()
+      }))
+    }
+
+    if (!data.length) {
+      alert('No data to export.')
+      return
+    }
+
+    const csvRows = []
+    csvRows.push(headers.join(','))
+    for (const item of data) {
+      const values = headers.map(header => {
+        const val = item[header]
+        const escaped = ('' + (val ?? '')).replace(/"/g, '""')
+        return `"${escaped}"`
+      })
+      csvRows.push(values.join(','))
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Export Chat Transcript as .txt
+  const handleExportChatTranscript = () => {
+    if (!selectedChat || chatMessages.length === 0) return
+    const transcript = chatMessages.map(m => {
+      const sender = m.sender?.name || 'Unknown'
+      const time = formatDate(m.createdAt)
+      return `[${time}] ${sender}: ${m.content}`
+    }).join('\n\n')
+
+    const blob = new Blob([`Chat Transcript: ${selectedChat.listing?.title || 'Conversation'}\nBetween ${selectedChat.owner?.name} & ${selectedChat.tenant?.name}\n\n${transcript}`], { type: 'text/plain;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `chat_transcript_${selectedChat._id}.txt`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Filtering calculations
   const filteredUsers = useMemo(() => users.filter((user) => {
     const matchesSearch =
       user.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -285,6 +606,22 @@ const AdminDashboard = () => {
   useEffect(() => setChatPage(1), [chatSearch])
   useEffect(() => setActivityPage(1), [activitySearch])
 
+  // Auditor items counts
+  const userAuditorListings = useMemo(() => {
+    if (!selectedEntity || selectedEntity.type !== 'user') return []
+    return listings.filter(l => l.owner?._id === selectedEntity.data._id)
+  }, [selectedEntity, listings])
+
+  const userAuditorInterests = useMemo(() => {
+    if (!selectedEntity || selectedEntity.type !== 'user') return []
+    return interests.filter(i => i.tenant?._id === selectedEntity.data._id || i.owner?._id === selectedEntity.data._id)
+  }, [selectedEntity, interests])
+
+  const listingAuditorInterests = useMemo(() => {
+    if (!selectedEntity || selectedEntity.type !== 'listing') return []
+    return interests.filter(i => i.listing?._id === selectedEntity.data._id)
+  }, [selectedEntity, interests])
+
   const stats = dashboard || {
     users: { total: 0, tenants: 0, owners: 0, admins: 0 },
     listings: { total: 0, active: 0, filled: 0, inactive: 0 },
@@ -299,28 +636,44 @@ const AdminDashboard = () => {
   const selectedData = selectedEntity?.data || null
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 p-6 text-white shadow-xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-6 pb-20">
+      {/* Sleek Gradient Header with Live monitoring and Refresh options */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 p-6 text-white shadow-xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.15),_transparent_45%)]" />
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-200">
-              <Shield className="h-4 w-4" />
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-300">
+              <Shield className="h-4 w-4 animate-pulse text-indigo-400" />
               Admin Control Center
             </div>
-            <h1 className="mt-2 text-3xl font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              Rent & Flatmate Finder Admin Panel
+            <h1 className="mt-2 text-3xl font-bold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              Rent & Flatmate Finder Admin
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-200">
-              Manage platform users, listings, interest requests, chats, activity logs, and analytics from one place.
+            <p className="mt-1 max-w-2xl text-sm text-slate-300">
+              Manage platform operations, audit users, review compatibility ratings, and track live activities.
             </p>
           </div>
-          <Link
-            to="/admin/activity"
-            className="inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-slate-100"
-          >
-            <Clock className="h-4 w-4" />
-            Recent Activity
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Live Monitoring Pulse Toggle */}
+            <button
+              onClick={() => setLiveMode(!liveMode)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition duration-300 ${liveMode ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-emerald-500/10 shadow-lg' : 'bg-white/10 hover:bg-white/15 text-slate-300 border border-transparent'}`}
+            >
+              <span className={`h-2.5 w-2.5 rounded-full ${liveMode ? 'bg-emerald-400 animate-ping' : 'bg-slate-400'}`} />
+              {liveMode ? 'Live Mode Active' : 'Enable Live Mode'}
+            </button>
+
+            {/* Quick manual refresh */}
+            <button
+              type="button"
+              disabled={isRefreshing}
+              onClick={() => refresh('Data refreshed')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/20 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4.5 w-4.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
@@ -334,491 +687,1217 @@ const AdminDashboard = () => {
       {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800 shadow-sm">{error}</div>}
 
       {loading ? (
-        <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white py-20 shadow-sm">
-          <div className="flex items-center gap-3 text-slate-600">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Loading admin analytics...
+        <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white py-32 shadow-sm">
+          <div className="flex flex-col items-center gap-3 text-slate-500">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <p className="text-sm font-semibold tracking-wide">Loading statistics & logs...</p>
           </div>
         </div>
       ) : (
         <>
+          {/* Stat Cards with Glow */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <AdminStatCard label="Total Users" value={stats.users.total} icon={Users} tone="indigo" sublabel={`${stats.users.tenants} tenants · ${stats.users.owners} owners`} />
             <AdminStatCard label="Total Listings" value={stats.listings.total} icon={Building2} tone="violet" sublabel={`${stats.listings.active} active · ${stats.listings.filled} filled`} />
             <AdminStatCard label="Interest Requests" value={stats.interests.total} icon={Heart} tone="rose" sublabel={`${stats.interests.accepted} accepted · ${stats.interests.pending} pending`} />
-            <AdminStatCard label="Total Chats" value={stats.chats.total} icon={MessageSquare} tone="emerald" sublabel={`${stats.messages.total} total messages`} />
-            <AdminStatCard label="Filled Listings" value={stats.listings.filled} icon={UserCog} tone="slate" sublabel="Closed for tenancy" />
+            <AdminStatCard label="Total Chats" value={stats.chats.total} icon={MessageSquare} tone="emerald" sublabel={`${stats.messages.total} messages total`} />
+            <AdminStatCard label="Conversion Rate" value={`${stats.interests.successRate}%`} icon={CheckCircle2} tone="amber" sublabel="Accepted requests rate" />
           </div>
 
-          <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          {/* Premium animated tab navigation switcher */}
+          <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
             {tabs.map(({ key, label, icon: Icon }) => (
               <Link
                 key={key}
                 to={`/admin/${key}`}
                 onClick={() => setActiveTab(key)}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition ${activeTab === key ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                className={`relative inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition ${activeTab === key ? 'text-white' : 'text-slate-600 hover:bg-slate-50'}`}
               >
-                <Icon className="h-4 w-4" />
-                {label}
+                {activeTab === key && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    className="absolute inset-0 rounded-xl bg-slate-900 shadow-sm"
+                    transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                    style={{ zIndex: 0 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </span>
               </Link>
             ))}
           </div>
 
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <div className="grid gap-6 xl:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Users by Role</h2>
-                  <div className="mt-4 h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={stats.charts.usersByRole} dataKey="count" nameKey="role" outerRadius={95} innerRadius={55} paddingAngle={4}>
-                          {stats.charts.usersByRole.map((entry, index) => (
-                            <Cell key={entry.role} fill={roleColors[index % roleColors.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Listings by Status</h2>
-                  <div className="mt-4 h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.charts.listingStatus}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="label" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Bar dataKey="count" radius={[10, 10, 0, 0]} fill="#4f46e5" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Monthly Registrations</h2>
-                  <div className="mt-4 h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={stats.charts.monthlyRegistrations}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="month" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Monthly Listings Created</h2>
-                  <div className="mt-4 h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={stats.charts.monthlyListings}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="month" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="count" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Listings by Location</h2>
-                <div className="mt-4 h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.charts.listingsByLocation} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" allowDecimals={false} />
-                      <YAxis type="category" dataKey="location" width={140} />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#0f172a" radius={[0, 10, 10, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'users' && (
-            <section className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-3">
-                <AdminSearchBar value={userSearch} onChange={setUserSearch} placeholder="Search users by name or email" />
-                <select
-                  value={userRoleFilter}
-                  onChange={(e) => setUserRoleFilter(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="">All roles</option>
-                  <option value="tenant">Tenant</option>
-                  <option value="owner">Owner</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Showing {userPagination.items.length} of {filteredUsers.length} users
-                </div>
-              </div>
-
-              <AdminDataTable>
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Profile</th>
-                      <th className="px-4 py-3">Email</th>
-                      <th className="px-4 py-3">Role</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {userPagination.items.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-slate-400">No users found.</td>
-                      </tr>
-                    ) : (
-                      userPagination.items.map((user) => (
-                        <tr key={user._id} className="hover:bg-slate-50/60">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              {user.avatar ? <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 font-bold text-indigo-700">{user.name?.slice(0, 2).toUpperCase()}</div>}
-                              <div>
-                                <p className="font-semibold text-slate-900">{user.name}</p>
-                                <p className="text-xs text-slate-500">{user._id}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">{user.email}</td>
-                          <td className="px-4 py-3">
-                            <select value={user.role} onChange={(e) => handleUpdateUserRole(user._id, e.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm outline-none focus:border-indigo-400">
-                              <option value="tenant">Tenant</option>
-                              <option value="owner">Owner</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button type="button" onClick={() => handleToggleUserStatus(user._id, user.isActive)} className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${user.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                              {user.isActive ? 'Active' : 'Blocked'}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 text-slate-500">{formatDate(user.createdAt)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" onClick={() => setSelectedEntity({ type: 'user', data: user })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">View</button>
-                              <button type="button" onClick={() => handleDeleteUser(user._id, user.name)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </AdminDataTable>
-              <AdminPagination page={userPagination.page} totalPages={userPagination.totalPages} onPageChange={setUserPage} />
-            </section>
-          )}
-
-          {activeTab === 'listings' && (
-            <section className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-3">
-                <AdminSearchBar value={listingSearch} onChange={setListingSearch} placeholder="Search listings by title or location" />
-                <select
-                  value={listingStatusFilter}
-                  onChange={(e) => setListingStatusFilter(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="">All statuses</option>
-                  <option value="active">Active</option>
-                  <option value="filled">Filled</option>
-                  <option value="hidden">Hidden</option>
-                </select>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Showing {listingPagination.items.length} of {filteredListings.length} listings</div>
-              </div>
-
-              <AdminDataTable>
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Property</th>
-                      <th className="px-4 py-3">Owner</th>
-                      <th className="px-4 py-3">Rent</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {listingPagination.items.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-400">No listings found.</td></tr>
-                    ) : (
-                      listingPagination.items.map((listing) => (
-                        <tr key={listing._id} className="hover:bg-slate-50/60">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              {listing.images?.[0]?.url ? <img src={listing.images[0].url} alt={listing.title} className="h-12 w-12 rounded-xl object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><Building2 className="h-5 w-5" /></div>}
-                              <div>
-                                <p className="font-semibold text-slate-900">{listing.title}</p>
-                                <p className="text-xs text-slate-500">{listing.location}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">{listing.owner?.name || 'Owner'}</td>
-                          <td className="px-4 py-3 font-semibold text-indigo-700">₹{listing.rent?.toLocaleString()}</td>
-                          <td className="px-4 py-3">
-                            <button type="button" onClick={() => handleToggleListing(listing._id, listing.isActive)} className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${listing.status === 'filled' ? 'bg-amber-100 text-amber-800' : listing.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>
-                              {listing.status === 'filled' ? 'Filled' : listing.isActive ? 'Active' : 'Hidden'}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 text-slate-500">{formatDate(listing.createdAt)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" onClick={() => setSelectedEntity({ type: 'listing', data: listing })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">View</button>
-                              <button type="button" onClick={() => handleDeleteListing(listing._id, listing.title)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </AdminDataTable>
-              <AdminPagination page={listingPagination.page} totalPages={listingPagination.totalPages} onPageChange={setListingPage} />
-            </section>
-          )}
-
-          {activeTab === 'interests' && (
-            <section className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <AdminSearchBar value={interestSearch} onChange={setInterestSearch} placeholder="Search tenant, owner, or listing" />
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Showing {interestPagination.items.length} of {filteredInterests.length} requests</div>
-              </div>
-
-              <AdminDataTable>
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Tenant</th>
-                      <th className="px-4 py-3">Owner</th>
-                      <th className="px-4 py-3">Listing</th>
-                      <th className="px-4 py-3">Compatibility</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {interestPagination.items.length === 0 ? (
-                      <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">No interest requests found.</td></tr>
-                    ) : (
-                      interestPagination.items.map((interest) => (
-                        <tr key={interest._id} className="hover:bg-slate-50/60">
-                          <td className="px-4 py-3"><p className="font-semibold text-slate-900">{interest.tenant?.name || 'Tenant'}</p><p className="text-xs text-slate-500">{interest.tenant?.email}</p></td>
-                          <td className="px-4 py-3"><p className="font-semibold text-slate-900">{interest.owner?.name || 'Owner'}</p><p className="text-xs text-slate-500">{interest.owner?.email}</p></td>
-                          <td className="px-4 py-3"><p className="font-semibold text-slate-900">{interest.listing?.title || 'Listing'}</p><p className="text-xs text-slate-500">₹{interest.listing?.rent?.toLocaleString()}</p></td>
-                          <td className="px-4 py-3 font-semibold text-indigo-700">{interest.compatibility?.score ?? '—'}</td>
-                          <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${interest.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : interest.status === 'declined' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>{interest.status}</span></td>
-                          <td className="px-4 py-3 text-slate-500">{formatDate(interest.createdAt)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" onClick={() => setSelectedEntity({ type: 'interest', data: interest })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">View</button>
-                              <button type="button" onClick={() => handleDeleteInterest(interest._id)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </AdminDataTable>
-              <AdminPagination page={interestPagination.page} totalPages={interestPagination.totalPages} onPageChange={setInterestPage} />
-            </section>
-          )}
-
-          {activeTab === 'chats' && (
-            <section className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <AdminSearchBar value={chatSearch} onChange={setChatSearch} placeholder="Search chats by tenant, owner, or listing" />
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Showing {chatPagination.items.length} of {filteredChats.length} chats</div>
-              </div>
-
-              <AdminDataTable>
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Owner</th>
-                      <th className="px-4 py-3">Tenant</th>
-                      <th className="px-4 py-3">Listing</th>
-                      <th className="px-4 py-3">Last Message</th>
-                      <th className="px-4 py-3">Last Active</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {chatPagination.items.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-400">No chats found.</td></tr>
-                    ) : (
-                      chatPagination.items.map((chat) => (
-                        <tr key={chat._id} className="hover:bg-slate-50/60">
-                          <td className="px-4 py-3"><p className="font-semibold text-slate-900">{chat.owner?.name || 'Owner'}</p><p className="text-xs text-slate-500">{chat.owner?.email}</p></td>
-                          <td className="px-4 py-3"><p className="font-semibold text-slate-900">{chat.tenant?.name || 'Tenant'}</p><p className="text-xs text-slate-500">{chat.tenant?.email}</p></td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">{chat.listing?.title || 'Listing'}</td>
-                          <td className="px-4 py-3 text-slate-600">{chat.lastMessage?.content ? chat.lastMessage.content.slice(0, 40) : 'No messages yet'}</td>
-                          <td className="px-4 py-3 text-slate-500">{formatDate(chat.lastMessageAt || chat.updatedAt)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" onClick={() => openChatHistory(chat)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">View History</button>
-                              <button type="button" onClick={() => handleDeleteChat(chat._id)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </AdminDataTable>
-              <AdminPagination page={chatPagination.page} totalPages={chatPagination.totalPages} onPageChange={setChatPage} />
-            </section>
-          )}
-
-          {activeTab === 'activity' && (
-            <section className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <AdminSearchBar value={activitySearch} onChange={setActivitySearch} placeholder="Search activity logs" />
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Showing {activityPagination.items.length} of {filteredActivity.length} activities</div>
-              </div>
-
-              <div className="space-y-3">
-                {activityPagination.items.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">No activity logs found.</div>
-                ) : (
-                  activityPagination.items.map((log) => (
-                    <div key={log._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">{log.action}</p>
-                          <p className="mt-1 text-sm font-medium text-slate-900">{log.description}</p>
-                          <p className="mt-1 text-xs text-slate-500">{log.user?.name || 'System'} · {log.user?.role || 'system'}</p>
-                        </div>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{formatDate(log.createdAt)}</span>
+          {/* Switch tab wrapper with framer-motion AnimatePresence */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              {activeTab === 'dashboard' && (
+                <div className="space-y-6">
+                  {/* Recharts Graphs */}
+                  <div className="grid gap-6 xl:grid-cols-2">
+                    {/* Users by role Pie chart with gradients */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Users by Role</h2>
+                      <div className="mt-4 h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={stats.charts.usersByRole}
+                              dataKey="count"
+                              nameKey="role"
+                              outerRadius={95}
+                              innerRadius={60}
+                              paddingAngle={4}
+                            >
+                              {stats.charts.usersByRole.map((entry, index) => (
+                                <Cell key={entry.role} fill={roleColors[index % roleColors.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomChartTooltip />} />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
 
-              <AdminPagination page={activityPagination.page} totalPages={activityPagination.totalPages} onPageChange={setActivityPage} />
-            </section>
-          )}
+                    {/* Listings by status custom bar chart */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Listings by Status</h2>
+                      <div className="mt-4 h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={stats.charts.listingStatus}>
+                            <defs>
+                              <linearGradient id="barGlow" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.85}/>
+                                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.4}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} tickLine={false} />
+                            <YAxis allowDecimals={false} stroke="#94a3b8" fontSize={12} tickLine={false} />
+                            <Tooltip content={<CustomChartTooltip />} />
+                            <Bar dataKey="count" radius={[10, 10, 0, 0]} fill="url(#barGlow)">
+                              <Cell fill="#4f46e5" />
+                              <Cell fill="#10b981" />
+                              <Cell fill="#64748b" />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
 
-          {activeTab === 'settings' && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Admin settings</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Use the shared account settings at{' '}
-                <Link to="/dashboard/settings" className="font-semibold text-indigo-600 hover:text-indigo-500">
-                  /dashboard/settings
-                </Link>
-                .
-              </p>
-            </div>
-          )}
+                  <div className="grid gap-6 xl:grid-cols-2">
+                    {/* Monthly registrations line chart with gradients */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Monthly Registrations</h2>
+                      <div className="mt-4 h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.charts.monthlyRegistrations}>
+                            <defs>
+                              <linearGradient id="regGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
+                            <YAxis allowDecimals={false} stroke="#94a3b8" fontSize={12} tickLine={false} />
+                            <Tooltip content={<CustomChartTooltip />} />
+                            <Line type="monotone" name="Registrations" dataKey="count" stroke="#10b981" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, stroke: '#fff' }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Monthly listings line chart */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Monthly Listings Created</h2>
+                      <div className="mt-4 h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.charts.monthlyListings}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
+                            <YAxis allowDecimals={false} stroke="#94a3b8" fontSize={12} tickLine={false} />
+                            <Tooltip content={<CustomChartTooltip />} />
+                            <Line type="monotone" name="Listings" dataKey="count" stroke="#f97316" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, stroke: '#fff' }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Listings by location horizontal bar chart */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Listings by Location</h2>
+                    <div className="mt-4 h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={stats.charts.listingsByLocation} layout="vertical">
+                          <defs>
+                            <linearGradient id="locGrad" x1="0" y1="0" x2="1" y2="0">
+                              <stop offset="5%" stopColor="#1e293b" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="#475569" stopOpacity={0.6}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                          <XAxis type="number" allowDecimals={false} stroke="#94a3b8" fontSize={12} tickLine={false} />
+                          <YAxis type="category" dataKey="location" width={140} stroke="#94a3b8" fontSize={12} tickLine={false} />
+                          <Tooltip content={<CustomChartTooltip />} />
+                          <Bar name="Listings count" dataKey="count" fill="url(#locGrad)" radius={[0, 8, 8, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'users' && (
+                <section className="space-y-4">
+                  {/* Search and Filters with CSV Export */}
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="grid flex-1 gap-4 sm:grid-cols-3">
+                      <AdminSearchBar value={userSearch} onChange={setUserSearch} placeholder="Search users by name/email" />
+                      <select
+                        value={userRoleFilter}
+                        onChange={(e) => setUserRoleFilter(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option value="">All roles</option>
+                        <option value="tenant">Tenant</option>
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        <span>Showing {filteredUsers.length} users</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleExportCSV('users')}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                  </div>
+
+                  <AdminDataTable>
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                        <tr>
+                          <th className="px-4 py-3.5 w-10">
+                            <input
+                              type="checkbox"
+                              checked={userPagination.items.length > 0 && userPagination.items.every(u => selectedUserIds.includes(u._id))}
+                              onChange={(e) => {
+                                const currentIds = userPagination.items.map(u => u._id)
+                                if (e.target.checked) {
+                                  setSelectedUserIds(prev => [...new Set([...prev, ...currentIds])])
+                                } else {
+                                  setSelectedUserIds(prev => prev.filter(id => !currentIds.includes(id)))
+                                }
+                              }}
+                              className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </th>
+                          <th className="px-4 py-3.5">Profile</th>
+                          <th className="px-4 py-3.5">Email</th>
+                          <th className="px-4 py-3.5">Role</th>
+                          <th className="px-4 py-3.5">Status</th>
+                          <th className="px-4 py-3.5">Created</th>
+                          <th className="px-4 py-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {userPagination.items.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-12 text-center text-slate-400">No users match criteria.</td>
+                          </tr>
+                        ) : (
+                          userPagination.items.map((user) => (
+                            <tr key={user._id} className={`hover:bg-slate-50/60 transition ${selectedUserIds.includes(user._id) ? 'bg-indigo-50/30' : ''}`}>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUserIds.includes(user._id)}
+                                  onChange={() => {
+                                    setSelectedUserIds(prev =>
+                                      prev.includes(user._id) ? prev.filter(id => id !== user._id) : [...prev, user._id]
+                                    )
+                                  }}
+                                  className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  {user.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover border border-slate-100" />
+                                  ) : (
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 font-bold text-indigo-700 border border-indigo-100">
+                                      {user.name?.slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-semibold text-slate-900">{user.name}</p>
+                                    <p className="text-[10px] font-mono text-slate-400">{user._id}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-slate-600 font-medium">{user.email}</td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={user.role}
+                                  onChange={(e) => handleUpdateUserRole(user._id, e.target.value)}
+                                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
+                                >
+                                  <option value="tenant">Tenant</option>
+                                  <option value="owner">Owner</option>
+                                  <option value="admin">Admin</option>
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleUserStatus(user._id, user.isActive)}
+                                  className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition ${user.isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}
+                                >
+                                  {user.isActive ? 'Active' : 'Blocked'}
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(user.createdAt)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setSelectedEntity({ type: 'user', data: user }); setAuditorTab('overview'); }}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    Audit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteUser(user._id, user.name)}
+                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </AdminDataTable>
+                  <AdminPagination page={userPagination.page} totalPages={userPagination.totalPages} onPageChange={setUserPage} />
+                </section>
+              )}
+
+              {activeTab === 'listings' && (
+                <section className="space-y-4">
+                  {/* Listing Search, Filter and CSV export */}
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="grid flex-1 gap-4 sm:grid-cols-3">
+                      <AdminSearchBar value={listingSearch} onChange={setListingSearch} placeholder="Search listings by title/location" />
+                      <select
+                        value={listingStatusFilter}
+                        onChange={(e) => setListingStatusFilter(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option value="">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="filled">Filled</option>
+                        <option value="hidden">Hidden</option>
+                      </select>
+                      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        <span>Showing {filteredListings.length} listings</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleExportCSV('listings')}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                  </div>
+
+                  <AdminDataTable>
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                        <tr>
+                          <th className="px-4 py-3.5 w-10">
+                            <input
+                              type="checkbox"
+                              checked={listingPagination.items.length > 0 && listingPagination.items.every(l => selectedListingIds.includes(l._id))}
+                              onChange={(e) => {
+                                const currentIds = listingPagination.items.map(l => l._id)
+                                if (e.target.checked) {
+                                  setSelectedListingIds(prev => [...new Set([...prev, ...currentIds])])
+                                } else {
+                                  setSelectedListingIds(prev => prev.filter(id => !currentIds.includes(id)))
+                                }
+                              }}
+                              className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </th>
+                          <th className="px-4 py-3.5">Property</th>
+                          <th className="px-4 py-3.5">Owner</th>
+                          <th className="px-4 py-3.5">Rent</th>
+                          <th className="px-4 py-3.5">Status</th>
+                          <th className="px-4 py-3.5">Created</th>
+                          <th className="px-4 py-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {listingPagination.items.length === 0 ? (
+                          <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No listings found.</td></tr>
+                        ) : (
+                          listingPagination.items.map((listing) => (
+                            <tr key={listing._id} className={`hover:bg-slate-50/60 transition ${selectedListingIds.includes(listing._id) ? 'bg-indigo-50/30' : ''}`}>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedListingIds.includes(listing._id)}
+                                  onChange={() => {
+                                    setSelectedListingIds(prev =>
+                                      prev.includes(listing._id) ? prev.filter(id => id !== listing._id) : [...prev, listing._id]
+                                    )
+                                  }}
+                                  className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  {listing.images?.[0]?.url ? (
+                                    <img src={listing.images[0].url} alt={listing.title} className="h-12 w-12 rounded-xl object-cover border border-slate-100" />
+                                  ) : (
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100">
+                                      <Building2 className="h-5 w-5" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-slate-900 truncate max-w-xs">{listing.title}</p>
+                                    <p className="text-xs text-slate-400 truncate max-w-xs">{listing.location}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-slate-600 font-medium">{listing.owner?.name || 'Unknown Owner'}</td>
+                              <td className="px-4 py-3 font-semibold text-indigo-700">₹{listing.rent?.toLocaleString()}</td>
+                              <td className="px-4 py-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleListing(listing._id, listing.isActive)}
+                                  className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition ${listing.status === 'filled' ? 'bg-emerald-500' : listing.isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                  {listing.status === 'filled' ? 'Filled' : listing.isActive ? 'Active' : 'Hidden'}
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(listing.createdAt)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setSelectedEntity({ type: 'listing', data: listing }); setAuditorTab('overview'); }}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    Audit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteListing(listing._id, listing.title)}
+                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </AdminDataTable>
+                  <AdminPagination page={listingPagination.page} totalPages={listingPagination.totalPages} onPageChange={setListingPage} />
+                </section>
+              )}
+
+              {activeTab === 'interests' && (
+                <section className="space-y-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                      <AdminSearchBar value={interestSearch} onChange={setInterestSearch} placeholder="Search tenant, owner, or listing..." />
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 flex items-center">
+                        Showing {filteredInterests.length} compatibility match cases
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleExportCSV('interests')}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                  </div>
+
+                  <AdminDataTable>
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                        <tr>
+                          <th className="px-4 py-3.5">Tenant</th>
+                          <th className="px-4 py-3.5">Owner</th>
+                          <th className="px-4 py-3.5">Listing</th>
+                          <th className="px-4 py-3.5">Compatibility</th>
+                          <th className="px-4 py-3.5">Status</th>
+                          <th className="px-4 py-3.5">Created</th>
+                          <th className="px-4 py-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {interestPagination.items.length === 0 ? (
+                          <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No match interests found.</td></tr>
+                        ) : (
+                          interestPagination.items.map((interest) => (
+                            <tr key={interest._id} className="hover:bg-slate-50/60 transition">
+                              <td className="px-4 py-3">
+                                <p className="font-semibold text-slate-900">{interest.tenant?.name || 'Tenant'}</p>
+                                <p className="text-xs text-slate-400 font-mono">{interest.tenant?.email}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="font-semibold text-slate-900">{interest.owner?.name || 'Owner'}</p>
+                                <p className="text-xs text-slate-400 font-mono">{interest.owner?.email}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="font-semibold text-slate-900 truncate max-w-[200px]">{interest.listing?.title || 'Listing'}</p>
+                                <p className="text-xs font-bold text-indigo-600">₹{interest.listing?.rent?.toLocaleString()}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 font-extrabold text-indigo-700 border border-indigo-100">
+                                    {interest.compatibility?.score ?? '—'}
+                                  </div>
+                                  <span className="text-xs text-slate-500 font-semibold">AI Rating</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${interest.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : interest.status === 'declined' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                                  {interest.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(interest.createdAt)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedEntity({ type: 'interest', data: interest })}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    View
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteInterest(interest._id)}
+                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </AdminDataTable>
+                  <AdminPagination page={interestPagination.page} totalPages={interestPagination.totalPages} onPageChange={setInterestPage} />
+                </section>
+              )}
+
+              {activeTab === 'chats' && (
+                <section className="space-y-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                      <AdminSearchBar value={chatSearch} onChange={setChatSearch} placeholder="Search chats by tenant, owner, or listing..." />
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 flex items-center">
+                        Showing {filteredChats.length} active logs of chats
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleExportCSV('chats')}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                  </div>
+
+                  <AdminDataTable>
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                        <tr>
+                          <th className="px-4 py-3.5">Owner</th>
+                          <th className="px-4 py-3.5">Tenant</th>
+                          <th className="px-4 py-3.5">Listing</th>
+                          <th className="px-4 py-3.5">Last Message</th>
+                          <th className="px-4 py-3.5">Last Active</th>
+                          <th className="px-4 py-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {chatPagination.items.length === 0 ? (
+                          <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No chats found.</td></tr>
+                        ) : (
+                          chatPagination.items.map((chat) => (
+                            <tr key={chat._id} className="hover:bg-slate-50/60 transition">
+                              <td className="px-4 py-3">
+                                <p className="font-semibold text-slate-900">{chat.owner?.name || 'Owner'}</p>
+                                <p className="text-xs text-slate-400 font-mono">{chat.owner?.email}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="font-semibold text-slate-900">{chat.tenant?.name || 'Tenant'}</p>
+                                <p className="text-xs text-slate-400 font-mono">{chat.tenant?.email}</p>
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-slate-800 truncate max-w-[150px]">{chat.listing?.title || 'Listing'}</td>
+                              <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{chat.lastMessage?.content || 'No messages yet'}</td>
+                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(chat.lastMessageAt || chat.updatedAt)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openChatHistory(chat)}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 flex items-center gap-1.5"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5 text-indigo-600" />
+                                    Read Chat
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteChat(chat._id)}
+                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </AdminDataTable>
+                  <AdminPagination page={chatPagination.page} totalPages={chatPagination.totalPages} onPageChange={setChatPage} />
+                </section>
+              )}
+
+              {activeTab === 'activity' && (
+                <section className="space-y-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                      <AdminSearchBar value={activitySearch} onChange={setActivitySearch} placeholder="Search activity logs..." />
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 flex items-center">
+                        Showing {filteredActivity.length} timeline logs of activities
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleExportCSV('activity')}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                  </div>
+
+                  {/* Redesigned activity timeline log */}
+                  <div className="relative pl-6 before:absolute before:left-3 before:top-4 before:bottom-4 before:w-[2px] before:bg-indigo-100">
+                    {activityPagination.items.length === 0 ? (
+                      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">No activity logs found.</div>
+                    ) : (
+                      activityPagination.items.map((log) => {
+                        let dotColor = 'bg-slate-300'
+                        if (log.action.includes('delete')) dotColor = 'bg-rose-500'
+                        else if (log.action.includes('create') || log.action.includes('add') || log.action.includes('unblock')) dotColor = 'bg-emerald-500'
+                        else if (log.action.includes('update') || log.action.includes('status') || log.action.includes('role') || log.action.includes('block')) dotColor = 'bg-amber-500'
+
+                        return (
+                          <div key={log._id} className="relative mb-6 last:mb-0">
+                            {/* Dot timeline indicator */}
+                            <span className={`absolute -left-6 top-1.5 h-3.5 w-3.5 rounded-full border-4 border-white ${dotColor} shadow-sm`} />
+                            
+                            <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm hover:shadow-md transition-all">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                                      {log.action}
+                                    </span>
+                                    <span className="text-xs text-slate-400 font-mono">ID: {log._id}</span>
+                                  </div>
+                                  <p className="mt-2 text-sm font-semibold text-slate-800">{log.description}</p>
+                                  <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                                    <span className="font-semibold text-slate-700">{log.user?.name || 'System'}</span>
+                                    <span>·</span>
+                                    <span className="uppercase font-bold text-[10px] tracking-wide text-slate-400">{log.user?.role || 'system'}</span>
+                                  </div>
+                                </div>
+                                <span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500 sm:self-center">
+                                  {formatDate(log.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  <AdminPagination page={activityPagination.page} totalPages={activityPagination.totalPages} onPageChange={setActivityPage} />
+                </section>
+              )}
+
+              {activeTab === 'settings' && (
+                <div className="space-y-6 max-w-4xl mx-auto">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Profile Info Form */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
+                      <form onSubmit={handleProfileSubmit} className="space-y-5">
+                        <h2 className="text-md font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                          <User className="h-5 w-5 text-indigo-600" />
+                          Profile Details
+                        </h2>
+
+                        {profileSuccess && (
+                          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <span>{profileSuccess}</span>
+                          </div>
+                        )}
+
+                        {profileError && (
+                          <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                            <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                            <span>{profileError}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Full Name</label>
+                          <input
+                            type="text"
+                            placeholder="Your full name"
+                            value={profileName}
+                            onChange={(e) => setProfileName(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Email Address</label>
+                          <input
+                            type="email"
+                            placeholder="your.email@example.com"
+                            value={profileEmail}
+                            onChange={(e) => setProfileEmail(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={profileSaving}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-100 transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {profileSaving ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Saving Changes...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4" />
+                                Save Details
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+                    {/* Change Password Form */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
+                      <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                        <h2 className="text-md font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                          <Lock className="h-5 w-5 text-indigo-600" />
+                          Change Password
+                        </h2>
+
+                        {passwordSuccess && (
+                          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <span>{passwordSuccess}</span>
+                          </div>
+                        )}
+
+                        {passwordError && (
+                          <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                            <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                            <span>{passwordError}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Current Password</label>
+                          <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">New Password</label>
+                          <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Confirm New Password</label>
+                          <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={passwordSaving}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-100 transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {passwordSaving ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Updating Password...
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="h-4 w-4" />
+                                Change Password
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </>
       )}
 
-      {selectedEntity && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{selectedType}</p>
-                <h3 className="mt-1 text-2xl font-bold text-slate-900">Details</h3>
-              </div>
-              <button type="button" onClick={() => setSelectedEntity(null)} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-4 text-sm text-slate-700">
-              {selectedType === 'user' && (
-                <>
-                  <p><strong>Name:</strong> {selectedData.name}</p>
-                  <p><strong>Email:</strong> {selectedData.email}</p>
-                  <p><strong>Role:</strong> {selectedData.role}</p>
-                  <p><strong>Status:</strong> {selectedData.isActive ? 'Active' : 'Blocked'}</p>
-                  <p><strong>Created:</strong> {formatDate(selectedData.createdAt)}</p>
-                </>
-              )}
-              {selectedType === 'listing' && (
-                <>
-                  <p><strong>Title:</strong> {selectedData.title}</p>
-                  <p><strong>Location:</strong> {selectedData.location}</p>
-                  <p><strong>Rent:</strong> ₹{selectedData.rent?.toLocaleString()}</p>
-                  <p><strong>Room Type:</strong> {selectedData.roomType}</p>
-                  <p><strong>Furnishing:</strong> {selectedData.furnished ? 'Furnished' : 'Unfurnished'}</p>
-                  <p><strong>Status:</strong> {selectedData.status === 'filled' ? 'Filled' : selectedData.isActive ? 'Active' : 'Hidden'}</p>
-                </>
-              )}
-              {selectedType === 'interest' && (
-                <>
-                  <p><strong>Tenant:</strong> {selectedData.tenant?.name}</p>
-                  <p><strong>Owner:</strong> {selectedData.owner?.name}</p>
-                  <p><strong>Listing:</strong> {selectedData.listing?.title}</p>
-                  <p><strong>Compatibility Score:</strong> {selectedData.compatibility?.score ?? '—'}</p>
-                  <p><strong>Status:</strong> {selectedData.status}</p>
-                  <p><strong>Message:</strong> {selectedData.tenantMessage || 'No message'}</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedChat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Chat History</p>
-                <h3 className="mt-1 text-2xl font-bold text-slate-900">{selectedChat.listing?.title || 'Conversation'}</h3>
-                <p className="mt-1 text-sm text-slate-500">{selectedChat.owner?.name} · {selectedChat.tenant?.name}</p>
-              </div>
-              <button type="button" onClick={() => setSelectedChat(null)} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              {chatLoading ? (
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Loading messages...
+      {/* Enhanced detail auditing inspectors */}
+      <AnimatePresence>
+        {selectedEntity && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Audit Inspect : {selectedType}
+                  </span>
+                  <h3 className="mt-2 text-2xl font-bold text-slate-900 leading-tight">
+                    {selectedType === 'user' ? selectedData.name : selectedType === 'listing' ? selectedData.title : 'Details Viewer'}
+                  </h3>
                 </div>
-              ) : chatMessages.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-slate-400">No messages in this chat.</div>
-              ) : (
-                chatMessages.map((message) => (
-                  <div key={message._id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-slate-900">{message.sender?.name || 'User'}</p>
-                      <p className="text-xs text-slate-500">{formatDate(message.createdAt)}</p>
-                    </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{message.content}</p>
-                  </div>
-                ))
+                <button
+                  type="button"
+                  onClick={() => setSelectedEntity(null)}
+                  className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Tabbed Auditing Sub-Navigation for Users and Listings */}
+              {(selectedType === 'user' || selectedType === 'listing') && (
+                <div className="flex border-b border-slate-100 mt-4 gap-1.5 p-1 bg-slate-50 rounded-xl">
+                  <button
+                    onClick={() => setAuditorTab('overview')}
+                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'overview' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Overview
+                  </button>
+                  {selectedType === 'user' && (
+                    <>
+                      <button
+                        onClick={() => setAuditorTab('listings')}
+                        className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'listings' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        Listings ({userAuditorListings.length})
+                      </button>
+                      <button
+                        onClick={() => setAuditorTab('interests')}
+                        className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'interests' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        Interests ({userAuditorInterests.length})
+                      </button>
+                    </>
+                  )}
+                  {selectedType === 'listing' && (
+                    <button
+                      onClick={() => setAuditorTab('interests')}
+                      className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'interests' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Prospects ({listingAuditorInterests.length})
+                    </button>
+                  )}
+                </div>
               )}
-            </div>
+
+              {/* Modal Body Contents */}
+              <div className="mt-6 flex-1 text-sm text-slate-700">
+                {selectedType === 'user' && (
+                  <>
+                    {auditorTab === 'overview' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          {selectedData.avatar ? (
+                            <img src={selectedData.avatar} alt={selectedData.name} className="h-16 w-16 rounded-2xl object-cover border border-white shadow" />
+                          ) : (
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 font-extrabold text-indigo-700 text-xl border border-white shadow">
+                              {selectedData.name?.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-base font-bold text-slate-900">{selectedData.name}</p>
+                            <p className="text-xs text-slate-500">{selectedData.email}</p>
+                            <span className="mt-1.5 inline-block rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100">
+                              Role: {selectedData.role}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-200 p-4 space-y-1">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Status</p>
+                            <p className="text-sm font-semibold flex items-center gap-1.5">
+                              <span className={`h-2 w-2 rounded-full ${selectedData.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                              {selectedData.isActive ? 'Active (Good Standing)' : 'Blocked / Suspended'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 p-4 space-y-1">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Joined Platform</p>
+                            <p className="text-sm font-semibold text-slate-800">{formatDate(selectedData.createdAt)}</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Database Credentials</p>
+                          <p className="text-xs font-mono bg-slate-50 p-2.5 rounded-lg border border-slate-100 break-all select-all">
+                            ID: {selectedData._id}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {auditorTab === 'listings' && (
+                      <div className="space-y-3">
+                        {userAuditorListings.length === 0 ? (
+                          <p className="text-center py-6 text-slate-400">This owner doesn't have any listings yet.</p>
+                        ) : (
+                          userAuditorListings.map(listing => (
+                            <div key={listing._id} className="flex items-center justify-between border border-slate-150 p-3 rounded-xl bg-slate-50">
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-800 truncate">{listing.title}</p>
+                                <p className="text-xs text-slate-500">{listing.location} · <span className="font-semibold text-indigo-600">₹{listing.rent?.toLocaleString()}</span></p>
+                              </div>
+                              <button
+                                onClick={() => handleToggleListing(listing._id, listing.isActive)}
+                                className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition ${listing.isActive ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20' : 'bg-slate-200 text-slate-700 hover:bg-slate-350'}`}
+                              >
+                                {listing.isActive ? 'Active' : 'Hidden'}
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {auditorTab === 'interests' && (
+                      <div className="space-y-3">
+                        {userAuditorInterests.length === 0 ? (
+                          <p className="text-center py-6 text-slate-400">No matching user interests recorded.</p>
+                        ) : (
+                          userAuditorInterests.map(interest => (
+                            <div key={interest._id} className="border border-slate-150 p-3 rounded-xl bg-slate-50 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-800">
+                                  {interest.tenant?.name === selectedData.name ? `Requested: ${interest.listing?.title}` : `Received from: ${interest.tenant?.name}`}
+                                </span>
+                                <span className={`rounded-full px-2 py-0.5 font-bold uppercase ${interest.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : interest.status === 'declined' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                                  {interest.status}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between mt-2 text-slate-500">
+                                <span>Compatibility Rating: <strong className="text-indigo-600">{interest.compatibility?.score ?? '—'}</strong></span>
+                                <span>Date: {formatDate(interest.createdAt)}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {selectedType === 'listing' && (
+                  <>
+                    {auditorTab === 'overview' && (
+                      <div className="space-y-4">
+                        {/* Styled carousel of images */}
+                        {selectedData.images && selectedData.images.length > 0 ? (
+                          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200">
+                            {selectedData.images.map((img, idx) => (
+                              <img key={idx} src={img.url} alt={`Listing thumbnail ${idx}`} className="h-28 w-40 object-cover rounded-xl border border-slate-200 flex-shrink-0" />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="h-32 bg-slate-100 border border-slate-200/50 rounded-2xl flex flex-col items-center justify-center text-slate-400 gap-1.5">
+                            <Building2 className="h-8 w-8 stroke-1" />
+                            <p className="text-xs">No property pictures uploaded.</p>
+                          </div>
+                        )}
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-200 p-4 space-y-1 bg-indigo-50/20 border-indigo-100">
+                            <p className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Monthly Rent</p>
+                            <p className="text-xl font-black text-indigo-700">₹{selectedData.rent?.toLocaleString()}</p>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 p-4 space-y-1">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Status</p>
+                            <p className="text-sm font-semibold flex items-center gap-1.5">
+                              <span className={`h-2.5 w-2.5 rounded-full ${selectedData.status === 'filled' ? 'bg-amber-500' : selectedData.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                              {selectedData.status === 'filled' ? 'Filled (Tenancy Closed)' : selectedData.isActive ? 'Active & Live' : 'Hidden'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Specifications</h4>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <p><strong>Room Type:</strong> {selectedData.roomType}</p>
+                            <p><strong>Furnishing:</strong> {selectedData.furnished ? 'Furnished' : 'Unfurnished'}</p>
+                            <p><strong>Location:</strong> {selectedData.location}</p>
+                            <p><strong>Amenities:</strong> {selectedData.amenities?.join(', ') || 'None'}</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Property Owner Profile</h4>
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-slate-200 font-bold text-slate-700 flex items-center justify-center uppercase">
+                              {selectedData.owner?.name?.slice(0, 2) || 'O'}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-900 text-xs">{selectedData.owner?.name || 'Owner Name'}</p>
+                              <p className="text-[10px] text-slate-500">{selectedData.owner?.email}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-4 space-y-1">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Description</h4>
+                          <p className="text-xs leading-relaxed text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            {selectedData.description || 'No description provided.'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {auditorTab === 'interests' && (
+                      <div className="space-y-3">
+                        {listingAuditorInterests.length === 0 ? (
+                          <p className="text-center py-6 text-slate-400">No match interests sent for this listing.</p>
+                        ) : (
+                          listingAuditorInterests.map(interest => (
+                            <div key={interest._id} className="flex items-center justify-between border border-slate-150 p-3 rounded-xl bg-slate-50">
+                              <div>
+                                <p className="font-bold text-slate-800">{interest.tenant?.name || 'Tenant'}</p>
+                                <p className="text-xs text-slate-400">{interest.tenant?.email} · compatibility: <strong className="text-indigo-600">{interest.compatibility?.score ?? '—'}</strong></p>
+                              </div>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${interest.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : interest.status === 'declined' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {interest.status}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {selectedType === 'interest' && (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/20 p-5 flex items-center justify-between border-dashed">
+                      <div>
+                        <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">AI Compatibility Match</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Rating based on tenant profile preferences</p>
+                      </div>
+                      <div className="h-14 w-14 rounded-2xl bg-indigo-600 font-black text-white text-2xl flex items-center justify-center shadow-lg shadow-indigo-600/25">
+                        {selectedData.compatibility?.score ?? '—'}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Parties Involved</h4>
+                      <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="font-bold text-slate-500">Tenant (Requester)</p>
+                          <p className="font-bold text-slate-800 mt-1">{selectedData.tenant?.name}</p>
+                          <p className="text-slate-400 font-mono mt-0.5">{selectedData.tenant?.email}</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="font-bold text-slate-500">Owner (Landlord)</p>
+                          <p className="font-bold text-slate-800 mt-1">{selectedData.owner?.name}</p>
+                          <p className="text-slate-400 font-mono mt-0.5">{selectedData.owner?.email}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4 space-y-1">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Property Target</h4>
+                      <p className="text-sm font-semibold text-slate-800">{selectedData.listing?.title}</p>
+                      <p className="text-xs text-slate-500">{selectedData.listing?.location} · ₹{selectedData.listing?.rent?.toLocaleString()}/mo</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Compatibility Rating Explanation</h4>
+                      <p className="text-xs leading-relaxed text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        {selectedData.compatibility?.explanation || 'No AI explanation generated yet.'}
+                      </p>
+                    </div>
+
+                    {selectedData.tenantMessage && (
+                      <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tenant Greeting Message</h4>
+                        <p className="text-xs leading-relaxed text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                          "{selectedData.tenantMessage}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
+      {/* Premium Chat Transcript Modal */}
+      <AnimatePresence>
+        {selectedChat && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100">
+                    Audit : Chat History Transcript
+                  </span>
+                  <h3 className="mt-2 text-xl font-bold text-slate-900 leading-tight">
+                    {selectedChat.listing?.title || 'Platform Conversation'}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Landlord: <strong className="text-slate-800">{selectedChat.owner?.name}</strong> · Tenant: <strong className="text-slate-800">{selectedChat.tenant?.name}</strong>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportChatTranscript}
+                    disabled={chatMessages.length === 0}
+                    title="Export logs as txt"
+                    className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40"
+                  >
+                    <FileDown className="h-4.5 w-4.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedChat(null)}
+                    className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Transcript Panel styled like a real app messaging stack */}
+              <div className="mt-6 flex-1 min-h-[350px] overflow-y-auto pr-2 space-y-4">
+                {chatLoading ? (
+                  <div className="flex items-center justify-center py-20 text-slate-500">
+                    <Loader2 className="h-6 w-6 animate-spin text-indigo-600 mr-2" />
+                    <span className="text-sm font-semibold">Decrypting message logs...</span>
+                  </div>
+                ) : chatMessages.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center text-slate-400">
+                    No messages have been exchanged in this chat room yet.
+                  </div>
+                ) : (
+                  chatMessages.map((message) => {
+                    const isOwnerSender = message.sender?._id === selectedChat.owner?._id
+                    return (
+                      <div key={message._id} className={`flex gap-3 max-w-[80%] ${isOwnerSender ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}>
+                        {/* Mini Initials Avatar */}
+                        <div className="h-8 w-8 rounded-full bg-slate-100 text-[10px] font-bold flex items-center justify-center border border-slate-200 flex-shrink-0 uppercase self-end">
+                          {message.sender?.name?.slice(0, 2) || 'U'}
+                        </div>
+                        <div>
+                          <div className={`p-3 rounded-2xl text-xs leading-relaxed ${isOwnerSender ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-100 shadow' : 'bg-slate-100 text-slate-800 rounded-bl-none shadow-sm'}`}>
+                            <p className="font-extrabold text-[10px] mb-1 opacity-70">{message.sender?.name}</p>
+                            <p className="whitespace-pre-wrap">{message.content}</p>
+                          </div>
+                          <span className={`block text-[9px] text-slate-400 mt-1 ${isOwnerSender ? 'text-right' : ''}`}>
+                            {formatDate(message.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

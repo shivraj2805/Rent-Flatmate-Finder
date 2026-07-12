@@ -41,6 +41,16 @@ const adminService = {
     return response.data
   },
 
+  bulkUpdateUserStatus: async (userIds, isActive) => {
+    const response = await api.post('/admin/users/bulk-status', { userIds, isActive })
+    return response.data
+  },
+
+  bulkDeleteUsers: async (userIds) => {
+    const response = await api.post('/admin/users/bulk-delete', { userIds })
+    return response.data
+  },
+
   getListings: async (params = {}) => {
     const response = await api.get('/admin/listings', { params })
     return response.data
@@ -58,6 +68,16 @@ const adminService = {
 
   deleteListing: async (listingId) => {
     const response = await api.delete(`/admin/listings/${listingId}`)
+    return response.data
+  },
+
+  bulkUpdateListingStatus: async (listingIds, isActive) => {
+    const response = await api.post('/admin/listings/bulk-status', { listingIds, isActive })
+    return response.data
+  },
+
+  bulkDeleteListings: async (listingIds) => {
+    const response = await api.post('/admin/listings/bulk-delete', { listingIds })
     return response.data
   },
 

@@ -49,18 +49,18 @@ const SectionLabel = ({ label }) => (
 
 const Sidebar = () => {
   const { user } = useAuth()
-  const isOwnerOrAdmin = user?.role === 'owner' || user?.role === 'admin'
-  const isTenantOrAdmin = user?.role === 'tenant' || user?.role === 'admin'
+  const isOwner = user?.role === 'owner'
+  const isTenant = user?.role === 'tenant'
 
   return (
     <aside className="hidden w-64 flex-shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col sticky top-16 h-[calc(100vh-4rem)]">
       <nav className="flex-1 overflow-y-auto p-4">
         {/* Overview */}
         <SectionLabel label="Overview" />
-        <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" end />
+        <NavItem to={user?.role === 'admin' ? '/admin/dashboard' : '/dashboard'} icon={LayoutDashboard} label="Dashboard" end />
 
         {/* Owner section */}
-        {isOwnerOrAdmin && (
+        {isOwner && (
           <>
             <SectionLabel label="Owner Tools" />
             <NavItem to="/dashboard/owner" icon={Building2} label="Owner Overview" end />
@@ -72,7 +72,7 @@ const Sidebar = () => {
         )}
 
         {/* Tenant section */}
-        {isTenantOrAdmin && (
+        {isTenant && (
           <>
             <SectionLabel label="Tenant Tools" />
             <NavItem to="/dashboard/tenant/browse" icon={Search} label="Browse Listings" />
@@ -91,7 +91,7 @@ const Sidebar = () => {
 
         {/* General */}
         <SectionLabel label="Account" />
-        <NavItem to="/dashboard/settings" icon={Settings} label="Settings" />
+        <NavItem to={user?.role === 'admin' ? '/admin/settings' : '/dashboard/settings'} icon={Settings} label="Settings" />
       </nav>
 
       {/* Footer */}

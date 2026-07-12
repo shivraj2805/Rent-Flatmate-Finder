@@ -12,6 +12,8 @@ router.get('/stats', adminController.getStats)
 
 // User Management Endpoints
 router.get('/users', adminController.getUsers)
+router.post('/users/bulk-status', adminController.bulkUpdateUserStatus)
+router.post('/users/bulk-delete', adminController.bulkDeleteUsers)
 router.get('/users/:id', adminController.getUserById)
 router.put('/users/:id/role', adminController.updateUserRole)
 router.patch('/users/:id/status', adminController.updateUserStatus)
@@ -19,6 +21,8 @@ router.delete('/users/:id', adminController.deleteUser)
 
 // Listing Management Endpoints
 router.get('/listings', adminController.getListings)
+router.post('/listings/bulk-status', adminController.bulkUpdateListingStatus)
+router.post('/listings/bulk-delete', adminController.bulkDeleteListings)
 router.get('/listings/:id', adminController.getListingById)
 router.patch('/listings/:id/status', adminController.toggleListingStatus)
 router.delete('/listings/:id', adminController.deleteListing)

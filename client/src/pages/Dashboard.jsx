@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import {
   Building2, PlusCircle, List, TrendingUp, Eye, EyeOff,
   Search, UserCircle, Heart, MessageSquare, ArrowRight,
@@ -431,7 +431,11 @@ const TenantDashboard = ({ user }) => {
 const Dashboard = () => {
   const { user } = useAuth()
 
-  if (user?.role === 'owner' || user?.role === 'admin') {
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />
+  }
+
+  if (user?.role === 'owner') {
     return <OwnerDashboard user={user} />
   }
 

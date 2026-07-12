@@ -434,6 +434,48 @@ const getActivity = async (limit = 100) => {
     .limit(Math.min(Math.max(Number(limit) || 100, 1), 500))
 }
 
+const bulkUpdateUserStatus = async (userIds, isActive) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) return { modifiedCount: 0 }
+  const result = await User.updateMany(
+    { _id: { $in: userIds } },
+    { $set: { isActive } }
+  )
+  return { modifiedCount: result.modifiedCount }
+}
+
+const bulkDeleteUsers = async (userIds) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) return { deletedCount: 0 }
+  for (const userId of userIds) {
+    try {
+      await deleteUser(userId)
+    } catch (err) {
+      if (err.statusCode !== 404) throw err
+    }
+  }
+  return { deletedCount: userIds.length }
+}
+
+const bulkUpdateListingStatus = async (listingIds, isActive) => {
+  if (!Array.isArray(listingIds) || listingIds.length === 0) return { modifiedCount: 0 }
+  const result = await Listing.updateMany(
+    { _id: { $in: listingIds } },
+    { $set: { isActive } }
+  )
+  return { modifiedCount: result.modifiedCount }
+}
+
+const bulkDeleteListings = async (listingIds) => {
+  if (!Array.isArray(listingIds) || listingIds.length === 0) return { deletedCount: 0 }
+  for (const listingId of listingIds) {
+    try {
+      await deleteListing(listingId)
+    } catch (err) {
+      if (err.statusCode !== 404) throw err
+    }
+  }
+  return { deletedCount: listingIds.length }
+}
+
 module.exports = {
   getDashboard,
   getStats,
@@ -452,4 +494,8 @@ module.exports = {
   getChatMessages,
   deleteChat,
   getActivity,
+  bulkUpdateUserStatus,
+  bulkDeleteUsers,
+  bulkUpdateListingStatus,
+  bulkDeleteListings,
 }

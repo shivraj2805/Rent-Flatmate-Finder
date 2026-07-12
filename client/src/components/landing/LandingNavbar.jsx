@@ -56,12 +56,14 @@ const LandingNavbar = () => {
 
         {/* Desktop CTA Buttons */}
         <div className="hidden items-center gap-4 lg:flex">
-          <Link
-            to="/login"
-            className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition duration-200"
-          >
-            Log In
-          </Link>
+          {!isAuthenticated && (
+            <Link
+              to="/login"
+              className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition duration-200"
+            >
+              Log In
+            </Link>
+          )}
           <Link
             to={isAuthenticated ? '/dashboard' : '/register'}
             className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] transition-all duration-300"
@@ -104,13 +106,15 @@ const LandingNavbar = () => {
                 </a>
               ))}
               <div className="flex flex-col gap-3 px-4 pt-4 border-t border-slate-100">
-                <Link
-                  to="/login"
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50 transition duration-200"
-                >
-                  Log In
-                </Link>
+                {!isAuthenticated && (
+                  <Link
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50 transition duration-200"
+                  >
+                    Log In
+                  </Link>
+                )}
                 <Link
                   to={isAuthenticated ? '/dashboard' : '/register'}
                   onClick={() => setMenuOpen(false)}
