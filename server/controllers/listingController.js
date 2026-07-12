@@ -83,6 +83,16 @@ const getAllListings = async (req, res, next) => {
           compatibilityMap[c.listing.toString()] = {
             score: c.score,
             explanation: c.explanation,
+            strengths: c.strengths || [],
+            weaknesses: c.weaknesses || [],
+            scoringBreakdown: c.scoringBreakdown || {
+              budgetScore: 0,
+              locationScore: 0,
+              dateScore: 0,
+              roomTypeScore: 0,
+            },
+            scoringMethod: c.scoringMethod || (c.source === 'ai' ? 'LLM' : 'Rule-Based'),
+            llmProvider: c.llmProvider || (c.source === 'ai' ? 'Gemini' : null),
             source: c.source,
           }
         })
@@ -95,6 +105,15 @@ const getAllListings = async (req, res, next) => {
             compatibilityMap[lId] = {
               score: fallback.score,
               explanation: fallback.explanation,
+              strengths: fallback.strengths || [],
+              weaknesses: fallback.weaknesses || [],
+              scoringBreakdown: {
+                budgetScore: fallback.budgetScore,
+                locationScore: fallback.locationScore,
+                dateScore: fallback.dateScore,
+                roomTypeScore: fallback.roomTypeScore,
+              },
+              scoringMethod: 'Rule-Based',
               source: 'rule-based-pending',
             }
             // Trigger background AI calculation

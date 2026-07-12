@@ -76,10 +76,28 @@ const createInterest = async ({ tenantId, listingId, tenantMessage }) => {
  * Get interests sent by a tenant
  */
 const getInterestsByTenant = async (tenantId) => {
-  return Interest.find({ tenant: tenantId })
+  const interests = await Interest.find({ tenant: tenantId })
     .populate('listing', 'title rent location images isActive status roomType')
     .populate('owner', 'name email avatar')
     .sort({ createdAt: -1 })
+
+  const tenantProfile = await TenantProfile.findOne({ user: tenantId })
+  if (!tenantProfile) return interests
+
+  const Compatibility = require('../models/Compatibility')
+  const enrichedInterests = await Promise.all(
+    interests.map(async (interest) => {
+      const plainInterest = interest.toObject()
+      const compatibility = await Compatibility.findOne({
+        listing: interest.listing._id,
+        tenantProfile: tenantProfile._id,
+      })
+      plainInterest.compatibility = compatibility || null
+      return plainInterest
+    })
+  )
+
+  return enrichedInterests
 }
 
 /**
