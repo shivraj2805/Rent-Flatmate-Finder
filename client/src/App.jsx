@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RoleProtectedRoute from './components/RoleProtectedRoute.jsx'
+import GuestRoute from './components/GuestRoute.jsx'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Landing from './pages/Landing.jsx'
@@ -18,12 +19,13 @@ import ChatsPage from './pages/ChatsPage.jsx'
 import AdminDashboard from './pages/admin/AdminDashboard.jsx'
 import AdminLayout from './layouts/AdminLayout.jsx'
 import AdminProtectedRoute from './components/AdminProtectedRoute.jsx'
+import NotFound from './pages/NotFound.jsx'
 
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+      <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
       <Route path="/" element={<Landing />} />
       <Route
         element={
@@ -124,7 +126,7 @@ function App() {
         <Route path="activity" element={<AdminDashboard />} />
         <Route path="settings" element={<AdminDashboard />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
