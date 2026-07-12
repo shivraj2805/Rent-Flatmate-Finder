@@ -7,6 +7,9 @@ import {
 } from 'lucide-react'
 import useAuth from '../hooks/useAuth.jsx'
 import listingService from '../services/listingService.js'
+import interestService from '../services/interestService.js'
+import chatService from '../services/chatService.js'
+import tenantService from '../services/tenantService.js'
 
 // ─── Reusable atoms ────────────────────────────────────────────────────────────
 
@@ -209,44 +212,6 @@ const OwnerDashboard = ({ user }) => {
           </div>
         </section>
       )}
-
-      {/* Quick Actions */}
-      <section>
-        <div className="mb-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Quick Actions</h2>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ActionCard
-            to="/dashboard/owner/listings/new"
-            icon={PlusCircle}
-            title="Create a New Listing"
-            description="Post a new room or apartment to attract compatible tenants"
-            badge="Quick"
-            color="indigo"
-          />
-          <ActionCard
-            to="/dashboard/owner/listings"
-            icon={List}
-            title="Manage My Listings"
-            description="View, edit, toggle visibility, or delete your existing listings"
-            color="emerald"
-          />
-          <ActionCard
-            to="/dashboard/owner"
-            icon={TrendingUp}
-            title="Analytics Overview"
-            description="Track tenant interest and listing performance metrics"
-            color="violet"
-          />
-          <ActionCard
-            to="/dashboard"
-            icon={Building2}
-            title="Portfolio Summary"
-            description="See a high-level overview of all your properties"
-            color="amber"
-          />
-        </div>
-      </section>
     </div>
   )
 }
@@ -254,6 +219,42 @@ const OwnerDashboard = ({ user }) => {
 // ─── Tenant Dashboard ──────────────────────────────────────────────────────────
 
 const TenantDashboard = ({ user }) => {
+  const [stats, setStats] = useState({ interests: 0, chats: 0, profileCompleted: false })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadTenantStats = async () => {
+      try {
+        const [interestsRes, chatsRes, profileRes] = await Promise.allSettled([
+          interestService.getMyInterests(),
+          chatService.getChats(),
+          tenantService.getProfile()
+        ])
+
+        const interestsCount = interestsRes.status === 'fulfilled' && interestsRes.value.success 
+          ? (interestsRes.value.interests || []).length 
+          : 0
+
+        const chatsCount = chatsRes.status === 'fulfilled' && chatsRes.value.success 
+          ? (chatsRes.value.chats || []).length 
+          : 0
+
+        const profileCompleted = profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.profile !== null
+
+        setStats({
+          interests: interestsCount,
+          chats: chatsCount,
+          profileCompleted
+        })
+      } catch (err) {
+        // silently ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadTenantStats()
+  }, [])
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
@@ -344,9 +345,35 @@ const TenantDashboard = ({ user }) => {
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Your Status</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard icon={CheckCircle2} label="Account Status" value="Active" sub="Your profile is live" color="emerald" />
-          <StatCard icon={Heart} label="Interests Sent" value="—" sub="Coming in Step 6" color="rose" />
-          <StatCard icon={MessageSquare} label="Active Chats" value="—" sub="Coming in Step 7" color="violet" />
+          {loading ? (
+            [1, 2, 3].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-100 bg-slate-100" />
+            ))
+          ) : (
+            <>
+              <StatCard
+                icon={CheckCircle2}
+                label="Account Status"
+                value={stats.profileCompleted ? "Active" : "Setup Profile"}
+                sub={stats.profileCompleted ? "Your profile is live & active" : "Profile completion required"}
+                color={stats.profileCompleted ? "emerald" : "amber"}
+              />
+              <StatCard
+                icon={Heart}
+                label="Interests Sent"
+                value={stats.interests}
+                sub={`${stats.interests} property request${stats.interests !== 1 ? 's' : ''}`}
+                color="rose"
+              />
+              <StatCard
+                icon={MessageSquare}
+                label="Active Chats"
+                value={stats.chats}
+                sub={`${stats.chats} open conversation${stats.chats !== 1 ? 's' : ''}`}
+                color="violet"
+              />
+            </>
+          )}
         </div>
       </section>
 
@@ -382,44 +409,6 @@ const TenantDashboard = ({ user }) => {
               </div>
             )
           })}
-        </div>
-      </section>
-
-      {/* Quick Actions */}
-      <section>
-        <div className="mb-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Quick Actions</h2>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ActionCard
-            to="/dashboard/tenant/profile"
-            icon={UserCircle}
-            title="Setup My Profile"
-            description="Set preferences to get matched with compatible rooms"
-            badge="Start here"
-            color="violet"
-          />
-          <ActionCard
-            to="/dashboard/tenant/browse"
-            icon={Search}
-            title="Browse All Listings"
-            description="Explore rooms ranked by your compatibility score"
-            color="indigo"
-          />
-          <ActionCard
-            to="/dashboard/tenant/interests"
-            icon={Heart}
-            title="My Interest Requests"
-            description="Track the interest requests you've sent to owners"
-            color="rose"
-          />
-          <ActionCard
-            to="/dashboard/tenant/chats"
-            icon={MessageSquare}
-            title="Messages"
-            description="Chat with owners who have accepted your request"
-            color="emerald"
-          />
         </div>
       </section>
     </div>

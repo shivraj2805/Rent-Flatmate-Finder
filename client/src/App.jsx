@@ -6,7 +6,6 @@ import Dashboard from './pages/Dashboard.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
-import OwnerDashboard from './pages/owner/OwnerDashboard.jsx'
 import AddListing from './pages/owner/AddListing.jsx'
 import EditListing from './pages/owner/EditListing.jsx'
 import MyListings from './pages/owner/MyListings.jsx'
@@ -74,14 +73,7 @@ function App() {
             </RoleProtectedRoute>
           }
         />
-        <Route
-          path="/dashboard/owner"
-          element={
-            <RoleProtectedRoute allowedRoles={['owner', 'admin']}>
-              <OwnerDashboard />
-            </RoleProtectedRoute>
-          }
-        />
+
         <Route
           path="/dashboard/owner/interests"
           element={

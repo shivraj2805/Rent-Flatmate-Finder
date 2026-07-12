@@ -46,13 +46,30 @@ const createInterest = async ({ tenantId, listingId, tenantMessage }) => {
   }
 
   // Create interest request
-  return Interest.create({
+  const interest = await Interest.create({
     tenant: tenantId,
     listing: listingId,
     owner: listing.owner,
     tenantMessage: tenantMessage ? tenantMessage.trim() : '',
     status: 'pending',
   })
+
+  // Trigger notification for listing owner
+  const Notification = require('../models/Notification')
+  const User = require('../models/User')
+  const tenantUser = await User.findById(tenantId)
+  const tenantName = tenantUser ? tenantUser.name : 'A tenant'
+
+  Notification.create({
+    recipient: listing.owner,
+    sender: tenantId,
+    type: 'interest_received',
+    title: `Interest from ${tenantName}`,
+    content: `${tenantName} has expressed interest in your listing: "${listing.title}"`,
+    link: '/dashboard/owner/interests',
+  }).catch(() => {})
+
+  return interest
 }
 
 /**
@@ -125,6 +142,25 @@ const respondToInterest = async ({ interestId, ownerId, status, responseMessage 
   interest.respondedAt = new Date()
 
   const savedInterest = await interest.save()
+
+  // Trigger notification for tenant
+  const Notification = require('../models/Notification')
+  const User = require('../models/User')
+  const ownerUser = await User.findById(ownerId)
+  const ownerName = ownerUser ? ownerUser.name : 'The landlord'
+
+  const Listing = require('../models/Listing')
+  const listingObj = await Listing.findById(interest.listing)
+  const listingTitle = listingObj ? listingObj.title : 'property listing'
+
+  Notification.create({
+    recipient: interest.tenant,
+    sender: ownerId,
+    type: status === 'accepted' ? 'interest_accepted' : 'interest_declined',
+    title: status === 'accepted' ? 'Match Request Approved!' : 'Match Request Declined',
+    content: `${ownerName} has ${status} your interest request for "${listingTitle}"`,
+    link: status === 'accepted' ? '/dashboard/tenant/chats' : '/dashboard/tenant/interests',
+  }).catch(() => {})
 
   if (status === 'accepted') {
     const Chat = require('../models/Chat')

@@ -7,4 +7,5 @@ module.exports = {
   Chat: require('./Chat'),
   Message: require('./Message'),
   ActivityLog: require('./ActivityLog'),
+  Notification: require('./Notification'),
 }

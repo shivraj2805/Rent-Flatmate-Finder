@@ -113,6 +113,33 @@ const saveMessage = async (chatId, senderId, content, replyToId = null) => {
   chat.lastMessageAt = message.createdAt
   await chat.save()
 
+  // Dispatch message notification
+  const recipientId = chat.tenant.toString() === senderId.toString() ? chat.owner : chat.tenant
+  const Notification = require('../models/Notification')
+  const existingUnread = await Notification.findOne({
+    recipient: recipientId,
+    type: 'new_message',
+    isRead: false,
+  })
+
+  if (!existingUnread) {
+    const User = require('../models/User')
+    const sender = await User.findById(senderId)
+    const senderName = sender ? sender.name : 'Someone'
+    const truncatedMsg = content.trim().length > 60 
+      ? `${content.trim().slice(0, 57)}...` 
+      : content.trim()
+
+    Notification.create({
+      recipient: recipientId,
+      sender: senderId,
+      type: 'new_message',
+      title: `New Message from ${senderName}`,
+      content: `"${truncatedMsg}"`,
+      link: '/dashboard/tenant/chats',
+    }).catch(() => {})
+  }
+
   // Return fully populated message
   return Message.findById(message._id)
     .populate('sender', 'name avatar')

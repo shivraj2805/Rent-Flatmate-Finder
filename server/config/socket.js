@@ -19,6 +19,11 @@ const initSocket = (server) => {
       console.log(`[Socket] Socket ${socket.id} joined room: ${roomId}`)
     })
 
+    socket.on('join_user_room', (userId) => {
+      socket.join(userId)
+      console.log(`[Socket] User ${socket.id} joined personal room: ${userId}`)
+    })
+
     socket.on('leave_room', (roomId) => {
       socket.leave(roomId)
       console.log(`[Socket] Socket ${socket.id} left room: ${roomId}`)

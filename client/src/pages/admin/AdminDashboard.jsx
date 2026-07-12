@@ -30,6 +30,7 @@ import {
   Lock,
   Save,
   AlertCircle,
+  FolderOpen,
 } from 'lucide-react'
 import {
   BarChart,
@@ -90,7 +91,7 @@ const paginate = (items, page, pageSize) => {
   return { items: items.slice(start, start + pageSize), totalPages, page: safePage }
 }
 
-// Sleek glassmorphic custom chart tooltip
+// Sleek Custom Tooltip for Charts
 const CustomChartTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -107,13 +108,111 @@ const CustomChartTooltip = ({ active, payload, label }) => {
   return null
 }
 
+// PREMIUM SKELETON LOADERS
+const StatCardSkeleton = () => (
+  <div className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+    <div className="space-y-3 flex-1">
+      <div className="h-3.5 w-1/3 bg-slate-200 rounded" />
+      <div className="h-6 w-1/2 bg-slate-300 rounded" />
+      <div className="h-3 w-2/3 bg-slate-250 rounded" />
+    </div>
+    <div className="h-11 w-11 rounded-xl bg-slate-200" />
+  </div>
+)
+
+const ChartSkeleton = () => (
+  <div className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+    <div className="h-4 w-1/4 bg-slate-200 rounded" />
+    <div className="h-64 bg-slate-50/50 rounded-xl flex items-end justify-between p-6 gap-2">
+      <div className="h-20 w-8 bg-slate-200 rounded-t" />
+      <div className="h-44 w-8 bg-slate-200 rounded-t" />
+      <div className="h-28 w-8 bg-slate-200 rounded-t" />
+      <div className="h-56 w-8 bg-slate-200 rounded-t" />
+      <div className="h-36 w-8 bg-slate-200 rounded-t" />
+      <div className="h-48 w-8 bg-slate-200 rounded-t" />
+    </div>
+  </div>
+)
+
+const TableSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="flex gap-4">
+      <div className="h-11 w-1/3 bg-slate-200 rounded-xl" />
+      <div className="h-11 w-40 bg-slate-200 rounded-xl" />
+    </div>
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      <div className="bg-slate-50 h-10 border-b border-slate-200/60" />
+      <div className="p-4 space-y-4 divide-y divide-slate-100">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center justify-between pt-4 first:pt-0">
+            <div className="flex items-center gap-3 w-1/3">
+              <div className="h-10 w-10 bg-slate-200 rounded-xl" />
+              <div className="space-y-2 flex-1">
+                <div className="h-3.5 w-3/4 bg-slate-250 rounded" />
+                <div className="h-2 w-1/2 bg-slate-200 rounded" />
+              </div>
+            </div>
+            <div className="h-3 w-1/4 bg-slate-200 rounded" />
+            <div className="h-6 w-16 bg-slate-200 rounded-full" />
+            <div className="h-8 w-20 bg-slate-200 rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)
+
+// DYNAMIC PREMIUM EMPTY STATE COMPONENT
+const EmptyState = ({ icon: Icon, title, description, onReset }) => (
+  <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center shadow-sm flex flex-col items-center max-w-md mx-auto my-8">
+    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 border border-slate-100 shadow-inner">
+      <Icon className="h-7 w-7 stroke-1.25" />
+    </div>
+    <h3 className="mt-5 text-base font-bold text-slate-900" style={{ fontFamily: 'Outfit, sans-serif' }}>
+      {title}
+    </h3>
+    <p className="mt-2 text-xs leading-relaxed text-slate-500 max-w-xs mx-auto">
+      {description}
+    </p>
+    {onReset && (
+      <button
+        onClick={onReset}
+        className="mt-6 rounded-xl bg-slate-900 hover:bg-slate-800 px-4.5 py-2 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+      >
+        Reset Active Filters
+      </button>
+    )}
+  </div>
+)
+
+// CONNECTION ERROR SCREEN COMPONENT WITH INTERACTIVE RETRY
+const ErrorState = ({ message, onRetry }) => (
+  <div className="rounded-3xl border border-rose-100 bg-white p-8 text-center shadow-md flex flex-col items-center max-w-xl mx-auto my-12">
+    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 border border-rose-100 animate-bounce">
+      <AlertTriangle className="h-8 w-8" />
+    </div>
+    <h2 className="mt-5 text-xl font-bold text-slate-900" style={{ fontFamily: 'Outfit, sans-serif' }}>
+      Platform Sync Failed
+    </h2>
+    <p className="mt-2 text-sm text-slate-500 max-w-md leading-relaxed">
+      We encountered a problem synchronizing with the database: <strong className="text-rose-700 font-semibold">{message}</strong>. Please check your connection or platform status and retry.
+    </p>
+    <button
+      onClick={onRetry}
+      className="mt-6 flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-5 py-3 text-sm font-bold text-white shadow-lg transition cursor-pointer"
+    >
+      <RefreshCw className="h-4 w-4" />
+      Retry Sync
+    </button>
+  </div>
+)
+
 const AdminDashboard = () => {
   const location = useLocation()
   const { user, updateUser } = useAuth()
   const [activeTab, setActiveTab] = useState(getActiveTabFromPath(location.pathname))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
 
   const [dashboard, setDashboard] = useState(null)
   const [users, setUsers] = useState([])
@@ -167,6 +266,16 @@ const AdminDashboard = () => {
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
 
+  // TOAST NOTIFICATIONS SYSTEM
+  const [toasts, setToasts] = useState([])
+  const addToast = (message, type = 'success') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 4500)
+  }
+
   const pageSize = 8
 
   const loadData = async (silent = false) => {
@@ -192,7 +301,7 @@ const AdminDashboard = () => {
       if (activityRes.success) setActivity(activityRes.activity || [])
       else if (dashboardRes.recentActivity) setActivity(dashboardRes.recentActivity || [])
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to load admin data')
+      setError(requestError?.response?.data?.message || 'Failed to sync platform records.')
     } finally {
       setLoading(false)
       setIsRefreshing(false)
@@ -232,8 +341,7 @@ const AdminDashboard = () => {
 
   const refresh = async (message = '') => {
     if (message) {
-      setSuccessMsg(message)
-      setTimeout(() => setSuccessMsg(''), 4000)
+      addToast(message, 'success')
     }
     await loadData(true)
   }
@@ -259,10 +367,12 @@ const AdminDashboard = () => {
       const response = await authService.updateProfile({ name: profileName, email: profileEmail })
       if (response.success) {
         setProfileSuccess(response.message || 'Profile details updated!')
+        addToast('Profile details updated successfully', 'success')
         updateUser(response.user)
       }
     } catch (err) {
       setProfileError(err?.response?.data?.message || 'Failed to update profile')
+      addToast('Profile update failed', 'error')
     } finally {
       setProfileSaving(false)
     }
@@ -293,12 +403,14 @@ const AdminDashboard = () => {
       const response = await authService.updatePassword({ currentPassword, newPassword })
       if (response.success) {
         setPasswordSuccess(response.message || 'Password changed successfully!')
+        addToast('Password changed successfully', 'success')
         setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
       }
     } catch (err) {
       setPasswordError(err?.response?.data?.message || 'Failed to update password')
+      addToast('Password update failed', 'error')
     } finally {
       setPasswordSaving(false)
     }
@@ -315,7 +427,7 @@ const AdminDashboard = () => {
         await refresh(response.message || `Successfully bulk ${actionText}ed users.`)
       }
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to update users status')
+      addToast(requestError?.response?.data?.message || 'Failed to bulk update users status', 'error')
     }
   }
 
@@ -328,7 +440,7 @@ const AdminDashboard = () => {
         await refresh(response.message || 'Successfully bulk deleted users.')
       }
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to delete users')
+      addToast(requestError?.response?.data?.message || 'Failed to bulk delete users', 'error')
     }
   }
 
@@ -342,7 +454,7 @@ const AdminDashboard = () => {
         await refresh(response.message || `Successfully bulk ${actionText}d listings.`)
       }
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to update listings status')
+      addToast(requestError?.response?.data?.message || 'Failed to update listings status', 'error')
     }
   }
 
@@ -355,7 +467,7 @@ const AdminDashboard = () => {
         await refresh(response.message || 'Successfully bulk deleted listings.')
       }
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to delete listings')
+      addToast(requestError?.response?.data?.message || 'Failed to delete listings', 'error')
     }
   }
 
@@ -365,7 +477,7 @@ const AdminDashboard = () => {
       const response = await adminService.updateUserRole(userId, role)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to update user role')
+      addToast(requestError?.response?.data?.message || 'Failed to update user role', 'error')
     }
   }
 
@@ -374,7 +486,7 @@ const AdminDashboard = () => {
       const response = await adminService.updateUserStatus(userId, !currentStatus)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to update user status')
+      addToast(requestError?.response?.data?.message || 'Failed to update user status', 'error')
     }
   }
 
@@ -384,7 +496,7 @@ const AdminDashboard = () => {
       const response = await adminService.deleteUser(userId)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to delete user')
+      addToast(requestError?.response?.data?.message || 'Failed to delete user', 'error')
     }
   }
 
@@ -393,7 +505,7 @@ const AdminDashboard = () => {
       const response = await adminService.toggleListingStatus(listingId, !currentActive)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to update listing status')
+      addToast(requestError?.response?.data?.message || 'Failed to update listing status', 'error')
     }
   }
 
@@ -403,7 +515,7 @@ const AdminDashboard = () => {
       const response = await adminService.deleteListing(listingId)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to delete listing')
+      addToast(requestError?.response?.data?.message || 'Failed to delete listing', 'error')
     }
   }
 
@@ -413,7 +525,7 @@ const AdminDashboard = () => {
       const response = await adminService.deleteInterest(interestId)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to delete interest request')
+      addToast(requestError?.response?.data?.message || 'Failed to delete interest request', 'error')
     }
   }
 
@@ -423,7 +535,7 @@ const AdminDashboard = () => {
       const response = await adminService.deleteChat(chatId)
       if (response.success) await refresh(response.message)
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to delete chat')
+      addToast(requestError?.response?.data?.message || 'Failed to delete chat', 'error')
     }
   }
 
@@ -435,7 +547,7 @@ const AdminDashboard = () => {
       const response = await adminService.getChatMessages(chat._id)
       if (response.success) setChatMessages(response.messages || [])
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Failed to load chat history')
+      addToast(requestError?.response?.data?.message || 'Failed to load chat history', 'error')
     } finally {
       setChatLoading(false)
     }
@@ -503,9 +615,11 @@ const AdminDashboard = () => {
     }
 
     if (!data.length) {
-      alert('No data to export.')
+      addToast('No data available for CSV export', 'warning')
       return
     }
+
+    addToast(`Preparing CSV export for ${type}...`, 'info')
 
     const csvRows = []
     csvRows.push(headers.join(','))
@@ -527,6 +641,8 @@ const AdminDashboard = () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+
+    addToast(`${type.toUpperCase()} exported to CSV successfully!`, 'success')
   }
 
   // Export Chat Transcript as .txt
@@ -547,6 +663,7 @@ const AdminDashboard = () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    addToast('Chat transcript saved successfully!', 'success')
   }
 
   // Filtering calculations
@@ -635,6 +752,21 @@ const AdminDashboard = () => {
   const selectedType = selectedEntity?.type || ''
   const selectedData = selectedEntity?.data || null
 
+  // RENDER INTERACTION ERROR STATE SCREEN
+  if (error && !dashboard) {
+    return (
+      <div className="space-y-6 pb-20">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 p-6 text-white shadow-xl">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.15),_transparent_45%)]" />
+          <h1 className="text-3xl font-bold tracking-tight relative z-10" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            Platform Control Center
+          </h1>
+        </div>
+        <ErrorState message={error} onRetry={() => loadData(false)} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 pb-20">
       {/* Sleek Gradient Header with Live monitoring and Refresh options */}
@@ -668,7 +800,7 @@ const AdminDashboard = () => {
               type="button"
               disabled={isRefreshing}
               onClick={() => refresh('Data refreshed')}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/20 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/20 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`h-4.5 w-4.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -677,22 +809,33 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {successMsg && (
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 shadow-sm">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
-          <div>{successMsg}</div>
-        </div>
-      )}
-
-      {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800 shadow-sm">{error}</div>}
-
-      {loading ? (
-        <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white py-32 shadow-sm">
-          <div className="flex flex-col items-center gap-3 text-slate-500">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <p className="text-sm font-semibold tracking-wide">Loading statistics & logs...</p>
+      {/* RENDER SKELETON SCREENS ON MOUNT */}
+      {loading && !dashboard ? (
+        <>
+          {/* Stat Cards Skeleton */}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {[...Array(5)].map((_, idx) => (
+              <StatCardSkeleton key={idx} />
+            ))}
           </div>
-        </div>
+
+          {/* Navigation Bar Skeleton */}
+          <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+            {tabs.map((tab) => (
+              <div key={tab.key} className="h-10 w-28 bg-slate-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+
+          {/* Active Tab Content Skeleton */}
+          {activeTab === 'dashboard' ? (
+            <div className="grid gap-6 xl:grid-cols-2">
+              <ChartSkeleton />
+              <ChartSkeleton />
+            </div>
+          ) : (
+            <TableSkeleton />
+          )}
+        </>
       ) : (
         <>
           {/* Stat Cards with Glow */}
@@ -881,122 +1024,128 @@ const AdminDashboard = () => {
                     </div>
                     <button
                       onClick={() => handleExportCSV('users')}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition cursor-pointer"
                     >
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
                   </div>
 
-                  <AdminDataTable>
-                    <table className="w-full border-collapse text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
-                        <tr>
-                          <th className="px-4 py-3.5 w-10">
-                            <input
-                              type="checkbox"
-                              checked={userPagination.items.length > 0 && userPagination.items.every(u => selectedUserIds.includes(u._id))}
-                              onChange={(e) => {
-                                const currentIds = userPagination.items.map(u => u._id)
-                                if (e.target.checked) {
-                                  setSelectedUserIds(prev => [...new Set([...prev, ...currentIds])])
-                                } else {
-                                  setSelectedUserIds(prev => prev.filter(id => !currentIds.includes(id)))
-                                }
-                              }}
-                              className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                          </th>
-                          <th className="px-4 py-3.5">Profile</th>
-                          <th className="px-4 py-3.5">Email</th>
-                          <th className="px-4 py-3.5">Role</th>
-                          <th className="px-4 py-3.5">Status</th>
-                          <th className="px-4 py-3.5">Created</th>
-                          <th className="px-4 py-3.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {userPagination.items.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="px-4 py-12 text-center text-slate-400">No users match criteria.</td>
-                          </tr>
-                        ) : (
-                          userPagination.items.map((user) => (
-                            <tr key={user._id} className={`hover:bg-slate-50/60 transition ${selectedUserIds.includes(user._id) ? 'bg-indigo-50/30' : ''}`}>
-                              <td className="px-4 py-3">
+                  {/* USER DYNAMIC EMPTY STATE CHECK */}
+                  {filteredUsers.length === 0 ? (
+                    <EmptyState
+                      icon={Users}
+                      title="No Users Found"
+                      description={userSearch || userRoleFilter ? "We couldn't find any users matching your filters. Try checking your spelling or resetting filters." : "There are currently no registered users on the platform."}
+                      onReset={userSearch || userRoleFilter ? () => { setUserSearch(''); setUserRoleFilter(''); } : null}
+                    />
+                  ) : (
+                    <>
+                      <AdminDataTable>
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                            <tr>
+                              <th className="px-4 py-3.5 w-10">
                                 <input
                                   type="checkbox"
-                                  checked={selectedUserIds.includes(user._id)}
-                                  onChange={() => {
-                                    setSelectedUserIds(prev =>
-                                      prev.includes(user._id) ? prev.filter(id => id !== user._id) : [...prev, user._id]
-                                    )
+                                  checked={userPagination.items.length > 0 && userPagination.items.every(u => selectedUserIds.includes(u._id))}
+                                  onChange={(e) => {
+                                    const currentIds = userPagination.items.map(u => u._id)
+                                    if (e.target.checked) {
+                                      setSelectedUserIds(prev => [...new Set([...prev, ...currentIds])])
+                                    } else {
+                                      setSelectedUserIds(prev => prev.filter(id => !currentIds.includes(id)))
+                                    }
                                   }}
                                   className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                 />
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  {user.avatar ? (
-                                    <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover border border-slate-100" />
-                                  ) : (
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 font-bold text-indigo-700 border border-indigo-100">
-                                      {user.name?.slice(0, 2).toUpperCase()}
-                                    </div>
-                                  )}
-                                  <div>
-                                    <p className="font-semibold text-slate-900">{user.name}</p>
-                                    <p className="text-[10px] font-mono text-slate-400">{user._id}</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-slate-600 font-medium">{user.email}</td>
-                              <td className="px-4 py-3">
-                                <select
-                                  value={user.role}
-                                  onChange={(e) => handleUpdateUserRole(user._id, e.target.value)}
-                                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
-                                >
-                                  <option value="tenant">Tenant</option>
-                                  <option value="owner">Owner</option>
-                                  <option value="admin">Admin</option>
-                                </select>
-                              </td>
-                              <td className="px-4 py-3">
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleUserStatus(user._id, user.isActive)}
-                                  className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition ${user.isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}
-                                >
-                                  {user.isActive ? 'Active' : 'Blocked'}
-                                </button>
-                              </td>
-                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(user.createdAt)}</td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => { setSelectedEntity({ type: 'user', data: user }); setAuditorTab('overview'); }}
-                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                                  >
-                                    Audit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteUser(user._id, user.name)}
-                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
+                              </th>
+                              <th className="px-4 py-3.5">Profile</th>
+                              <th className="px-4 py-3.5">Email</th>
+                              <th className="px-4 py-3.5">Role</th>
+                              <th className="px-4 py-3.5">Status</th>
+                              <th className="px-4 py-3.5">Created</th>
+                              <th className="px-4 py-3.5 text-right">Actions</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </AdminDataTable>
-                  <AdminPagination page={userPagination.page} totalPages={userPagination.totalPages} onPageChange={setUserPage} />
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {userPagination.items.map((user) => (
+                              <tr key={user._id} className={`hover:bg-slate-50/60 transition ${selectedUserIds.includes(user._id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedUserIds.includes(user._id)}
+                                    onChange={() => {
+                                      setSelectedUserIds(prev =>
+                                        prev.includes(user._id) ? prev.filter(id => id !== user._id) : [...prev, user._id]
+                                      )
+                                    }}
+                                    className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    {user.avatar ? (
+                                      <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover border border-slate-100" />
+                                    ) : (
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 font-bold text-indigo-700 border border-indigo-100">
+                                        {user.name?.slice(0, 2).toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div>
+                                      <p className="font-semibold text-slate-900">{user.name}</p>
+                                      <p className="text-[10px] font-mono text-slate-400">{user._id}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 font-medium">{user.email}</td>
+                                <td className="px-4 py-3">
+                                  <select
+                                    value={user.role}
+                                    onChange={(e) => handleUpdateUserRole(user._id, e.target.value)}
+                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
+                                  >
+                                    <option value="tenant">Tenant</option>
+                                    <option value="owner">Owner</option>
+                                    <option value="admin">Admin</option>
+                                  </select>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleUserStatus(user._id, user.isActive)}
+                                    className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${user.isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}
+                                  >
+                                    {user.isActive ? 'Active' : 'Blocked'}
+                                  </button>
+                                </td>
+                                <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(user.createdAt)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => { setSelectedEntity({ type: 'user', data: user }); setAuditorTab('overview'); }}
+                                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                                    >
+                                      Audit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteUser(user._id, user.name)}
+                                      className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80 cursor-pointer"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </AdminDataTable>
+                      <AdminPagination page={userPagination.page} totalPages={userPagination.totalPages} onPageChange={setUserPage} />
+                    </>
+                  )}
                 </section>
               )}
 
@@ -1022,110 +1171,118 @@ const AdminDashboard = () => {
                     </div>
                     <button
                       onClick={() => handleExportCSV('listings')}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition cursor-pointer"
                     >
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
                   </div>
 
-                  <AdminDataTable>
-                    <table className="w-full border-collapse text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
-                        <tr>
-                          <th className="px-4 py-3.5 w-10">
-                            <input
-                              type="checkbox"
-                              checked={listingPagination.items.length > 0 && listingPagination.items.every(l => selectedListingIds.includes(l._id))}
-                              onChange={(e) => {
-                                const currentIds = listingPagination.items.map(l => l._id)
-                                if (e.target.checked) {
-                                  setSelectedListingIds(prev => [...new Set([...prev, ...currentIds])])
-                                } else {
-                                  setSelectedListingIds(prev => prev.filter(id => !currentIds.includes(id)))
-                                }
-                              }}
-                              className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                          </th>
-                          <th className="px-4 py-3.5">Property</th>
-                          <th className="px-4 py-3.5">Owner</th>
-                          <th className="px-4 py-3.5">Rent</th>
-                          <th className="px-4 py-3.5">Status</th>
-                          <th className="px-4 py-3.5">Created</th>
-                          <th className="px-4 py-3.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {listingPagination.items.length === 0 ? (
-                          <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No listings found.</td></tr>
-                        ) : (
-                          listingPagination.items.map((listing) => (
-                            <tr key={listing._id} className={`hover:bg-slate-50/60 transition ${selectedListingIds.includes(listing._id) ? 'bg-indigo-50/30' : ''}`}>
-                              <td className="px-4 py-3">
+                  {/* LISTINGS DYNAMIC EMPTY STATE CHECK */}
+                  {filteredListings.length === 0 ? (
+                    <EmptyState
+                      icon={Building2}
+                      title="No Listings Found"
+                      description={listingSearch || listingStatusFilter ? "No properties match your active search terms or status filters. Try resetting filters." : "There are no property listings currently active on the platform."}
+                      onReset={listingSearch || listingStatusFilter ? () => { setListingSearch(''); setListingStatusFilter(''); } : null}
+                    />
+                  ) : (
+                    <>
+                      <AdminDataTable>
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                            <tr>
+                              <th className="px-4 py-3.5 w-10">
                                 <input
                                   type="checkbox"
-                                  checked={selectedListingIds.includes(listing._id)}
-                                  onChange={() => {
-                                    setSelectedListingIds(prev =>
-                                      prev.includes(listing._id) ? prev.filter(id => id !== listing._id) : [...prev, listing._id]
-                                    )
+                                  checked={listingPagination.items.length > 0 && listingPagination.items.every(l => selectedListingIds.includes(l._id))}
+                                  onChange={(e) => {
+                                    const currentIds = listingPagination.items.map(l => l._id)
+                                    if (e.target.checked) {
+                                      setSelectedListingIds(prev => [...new Set([...prev, ...currentIds])])
+                                    } else {
+                                      setSelectedListingIds(prev => prev.filter(id => !currentIds.includes(id)))
+                                    }
                                   }}
                                   className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                 />
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  {listing.images?.[0]?.url ? (
-                                    <img src={listing.images[0].url} alt={listing.title} className="h-12 w-12 rounded-xl object-cover border border-slate-100" />
-                                  ) : (
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100">
-                                      <Building2 className="h-5 w-5" />
-                                    </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="font-semibold text-slate-900 truncate max-w-xs">{listing.title}</p>
-                                    <p className="text-xs text-slate-400 truncate max-w-xs">{listing.location}</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-slate-600 font-medium">{listing.owner?.name || 'Unknown Owner'}</td>
-                              <td className="px-4 py-3 font-semibold text-indigo-700">₹{listing.rent?.toLocaleString()}</td>
-                              <td className="px-4 py-3">
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleListing(listing._id, listing.isActive)}
-                                  className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition ${listing.status === 'filled' ? 'bg-emerald-500' : listing.isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                                >
-                                  {listing.status === 'filled' ? 'Filled' : listing.isActive ? 'Active' : 'Hidden'}
-                                </button>
-                              </td>
-                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(listing.createdAt)}</td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => { setSelectedEntity({ type: 'listing', data: listing }); setAuditorTab('overview'); }}
-                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                                  >
-                                    Audit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteListing(listing._id, listing.title)}
-                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
+                              </th>
+                              <th className="px-4 py-3.5">Property</th>
+                              <th className="px-4 py-3.5">Owner</th>
+                              <th className="px-4 py-3.5">Rent</th>
+                              <th className="px-4 py-3.5">Status</th>
+                              <th className="px-4 py-3.5">Created</th>
+                              <th className="px-4 py-3.5 text-right">Actions</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </AdminDataTable>
-                  <AdminPagination page={listingPagination.page} totalPages={listingPagination.totalPages} onPageChange={setListingPage} />
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {listingPagination.items.map((listing) => (
+                              <tr key={listing._id} className={`hover:bg-slate-50/60 transition ${selectedListingIds.includes(listing._id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedListingIds.includes(listing._id)}
+                                    onChange={() => {
+                                      setSelectedListingIds(prev =>
+                                        prev.includes(listing._id) ? prev.filter(id => id !== listing._id) : [...prev, listing._id]
+                                      )
+                                    }}
+                                    className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    {listing.images?.[0]?.url ? (
+                                      <img src={listing.images[0].url} alt={listing.title} className="h-12 w-12 rounded-xl object-cover border border-slate-100" />
+                                    ) : (
+                                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100">
+                                        <Building2 className="h-5 w-5" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <p className="font-semibold text-slate-900 truncate max-w-xs">{listing.title}</p>
+                                      <p className="text-xs text-slate-400 truncate max-w-xs">{listing.location}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 font-medium">{listing.owner?.name || 'Unknown Owner'}</td>
+                                <td className="px-4 py-3 font-semibold text-indigo-700">₹{listing.rent?.toLocaleString()}</td>
+                                <td className="px-4 py-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleListing(listing._id, listing.isActive)}
+                                    className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${listing.status === 'filled' ? 'bg-emerald-500 text-white' : listing.isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                  >
+                                    {listing.status === 'filled' ? 'Filled' : listing.isActive ? 'Active' : 'Hidden'}
+                                  </button>
+                                </td>
+                                <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(listing.createdAt)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => { setSelectedEntity({ type: 'listing', data: listing }); setAuditorTab('overview'); }}
+                                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                                    >
+                                      Audit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteListing(listing._id, listing.title)}
+                                      className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80 cursor-pointer"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </AdminDataTable>
+                      <AdminPagination page={listingPagination.page} totalPages={listingPagination.totalPages} onPageChange={setListingPage} />
+                    </>
+                  )}
                 </section>
               )}
 
@@ -1140,83 +1297,91 @@ const AdminDashboard = () => {
                     </div>
                     <button
                       onClick={() => handleExportCSV('interests')}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition cursor-pointer"
                     >
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
                   </div>
 
-                  <AdminDataTable>
-                    <table className="w-full border-collapse text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
-                        <tr>
-                          <th className="px-4 py-3.5">Tenant</th>
-                          <th className="px-4 py-3.5">Owner</th>
-                          <th className="px-4 py-3.5">Listing</th>
-                          <th className="px-4 py-3.5">Compatibility</th>
-                          <th className="px-4 py-3.5">Status</th>
-                          <th className="px-4 py-3.5">Created</th>
-                          <th className="px-4 py-3.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {interestPagination.items.length === 0 ? (
-                          <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No match interests found.</td></tr>
-                        ) : (
-                          interestPagination.items.map((interest) => (
-                            <tr key={interest._id} className="hover:bg-slate-50/60 transition">
-                              <td className="px-4 py-3">
-                                <p className="font-semibold text-slate-900">{interest.tenant?.name || 'Tenant'}</p>
-                                <p className="text-xs text-slate-400 font-mono">{interest.tenant?.email}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <p className="font-semibold text-slate-900">{interest.owner?.name || 'Owner'}</p>
-                                <p className="text-xs text-slate-400 font-mono">{interest.owner?.email}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <p className="font-semibold text-slate-900 truncate max-w-[200px]">{interest.listing?.title || 'Listing'}</p>
-                                <p className="text-xs font-bold text-indigo-600">₹{interest.listing?.rent?.toLocaleString()}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 font-extrabold text-indigo-700 border border-indigo-100">
-                                    {interest.compatibility?.score ?? '—'}
-                                  </div>
-                                  <span className="text-xs text-slate-500 font-semibold">AI Rating</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${interest.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : interest.status === 'declined' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
-                                  {interest.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(interest.createdAt)}</td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedEntity({ type: 'interest', data: interest })}
-                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                                  >
-                                    View
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteInterest(interest._id)}
-                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
+                  {/* INTERESTS DYNAMIC EMPTY STATE CHECK */}
+                  {filteredInterests.length === 0 ? (
+                    <EmptyState
+                      icon={Heart}
+                      title="No Interest Requests Found"
+                      description={interestSearch ? "No compatibility matching records match your search query. Try clearing the search." : "No tenant-landlord interest requests have been submitted yet."}
+                      onReset={interestSearch ? () => setInterestSearch('') : null}
+                    />
+                  ) : (
+                    <>
+                      <AdminDataTable>
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                            <tr>
+                              <th className="px-4 py-3.5">Tenant</th>
+                              <th className="px-4 py-3.5">Owner</th>
+                              <th className="px-4 py-3.5">Listing</th>
+                              <th className="px-4 py-3.5">Compatibility</th>
+                              <th className="px-4 py-3.5">Status</th>
+                              <th className="px-4 py-3.5">Created</th>
+                              <th className="px-4 py-3.5 text-right">Actions</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </AdminDataTable>
-                  <AdminPagination page={interestPagination.page} totalPages={interestPagination.totalPages} onPageChange={setInterestPage} />
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {interestPagination.items.map((interest) => (
+                              <tr key={interest._id} className="hover:bg-slate-50/60 transition">
+                                <td className="px-4 py-3">
+                                  <p className="font-semibold text-slate-900">{interest.tenant?.name || 'Tenant'}</p>
+                                  <p className="text-xs text-slate-400 font-mono">{interest.tenant?.email}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="font-semibold text-slate-900">{interest.owner?.name || 'Owner'}</p>
+                                  <p className="text-xs text-slate-400 font-mono">{interest.owner?.email}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="font-semibold text-slate-900 truncate max-w-[200px]">{interest.listing?.title || 'Listing'}</p>
+                                  <p className="text-xs font-bold text-indigo-600">₹{interest.listing?.rent?.toLocaleString()}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 font-extrabold text-indigo-700 border border-indigo-100">
+                                      {interest.compatibility?.score ?? '—'}
+                                    </div>
+                                    <span className="text-xs text-slate-500 font-semibold">AI Rating</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${interest.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : interest.status === 'declined' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                                    {interest.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(interest.createdAt)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedEntity({ type: 'interest', data: interest })}
+                                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                                    >
+                                      View
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteInterest(interest._id)}
+                                      className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80 cursor-pointer"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </AdminDataTable>
+                      <AdminPagination page={interestPagination.page} totalPages={interestPagination.totalPages} onPageChange={setInterestPage} />
+                    </>
+                  )}
                 </section>
               )}
 
@@ -1231,68 +1396,76 @@ const AdminDashboard = () => {
                     </div>
                     <button
                       onClick={() => handleExportCSV('chats')}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition cursor-pointer"
                     >
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
                   </div>
 
-                  <AdminDataTable>
-                    <table className="w-full border-collapse text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
-                        <tr>
-                          <th className="px-4 py-3.5">Owner</th>
-                          <th className="px-4 py-3.5">Tenant</th>
-                          <th className="px-4 py-3.5">Listing</th>
-                          <th className="px-4 py-3.5">Last Message</th>
-                          <th className="px-4 py-3.5">Last Active</th>
-                          <th className="px-4 py-3.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {chatPagination.items.length === 0 ? (
-                          <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No chats found.</td></tr>
-                        ) : (
-                          chatPagination.items.map((chat) => (
-                            <tr key={chat._id} className="hover:bg-slate-50/60 transition">
-                              <td className="px-4 py-3">
-                                <p className="font-semibold text-slate-900">{chat.owner?.name || 'Owner'}</p>
-                                <p className="text-xs text-slate-400 font-mono">{chat.owner?.email}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <p className="font-semibold text-slate-900">{chat.tenant?.name || 'Tenant'}</p>
-                                <p className="text-xs text-slate-400 font-mono">{chat.tenant?.email}</p>
-                              </td>
-                              <td className="px-4 py-3 font-semibold text-slate-800 truncate max-w-[150px]">{chat.listing?.title || 'Listing'}</td>
-                              <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{chat.lastMessage?.content || 'No messages yet'}</td>
-                              <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(chat.lastMessageAt || chat.updatedAt)}</td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => openChatHistory(chat)}
-                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 flex items-center gap-1.5"
-                                  >
-                                    <MessageCircle className="h-3.5 w-3.5 text-indigo-600" />
-                                    Read Chat
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteChat(chat._id)}
-                                    className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
+                  {/* CHATS DYNAMIC EMPTY STATE CHECK */}
+                  {filteredChats.length === 0 ? (
+                    <EmptyState
+                      icon={MessageSquare}
+                      title="No Active Chats"
+                      description={chatSearch ? "No chat logs match your search terms." : "No messages or conversations have been started between tenants and owners yet."}
+                      onReset={chatSearch ? () => setChatSearch('') : null}
+                    />
+                  ) : (
+                    <>
+                      <AdminDataTable>
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200/60">
+                            <tr>
+                              <th className="px-4 py-3.5">Owner</th>
+                              <th className="px-4 py-3.5">Tenant</th>
+                              <th className="px-4 py-3.5">Listing</th>
+                              <th className="px-4 py-3.5">Last Message</th>
+                              <th className="px-4 py-3.5">Last Active</th>
+                              <th className="px-4 py-3.5 text-right">Actions</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </AdminDataTable>
-                  <AdminPagination page={chatPagination.page} totalPages={chatPagination.totalPages} onPageChange={setChatPage} />
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {chatPagination.items.map((chat) => (
+                              <tr key={chat._id} className="hover:bg-slate-50/60 transition">
+                                <td className="px-4 py-3">
+                                  <p className="font-semibold text-slate-900">{chat.owner?.name || 'Owner'}</p>
+                                  <p className="text-xs text-slate-400 font-mono">{chat.owner?.email}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="font-semibold text-slate-900">{chat.tenant?.name || 'Tenant'}</p>
+                                  <p className="text-xs text-slate-400 font-mono">{chat.tenant?.email}</p>
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-slate-800 truncate max-w-[150px]">{chat.listing?.title || 'Listing'}</td>
+                                <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{chat.lastMessage?.content || 'No messages yet'}</td>
+                                <td className="px-4 py-3 text-slate-500 font-medium">{formatDate(chat.lastMessageAt || chat.updatedAt)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => openChatHistory(chat)}
+                                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <MessageCircle className="h-3.5 w-3.5 text-indigo-600" />
+                                      Read Chat
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteChat(chat._id)}
+                                      className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/80 cursor-pointer"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </AdminDataTable>
+                      <AdminPagination page={chatPagination.page} totalPages={chatPagination.totalPages} onPageChange={setChatPage} />
+                    </>
+                  )}
                 </section>
               )}
 
@@ -1307,57 +1480,65 @@ const AdminDashboard = () => {
                     </div>
                     <button
                       onClick={() => handleExportCSV('activity')}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition cursor-pointer"
                     >
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
                   </div>
 
-                  {/* Redesigned activity timeline log */}
-                  <div className="relative pl-6 before:absolute before:left-3 before:top-4 before:bottom-4 before:w-[2px] before:bg-indigo-100">
-                    {activityPagination.items.length === 0 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-slate-400 shadow-sm">No activity logs found.</div>
-                    ) : (
-                      activityPagination.items.map((log) => {
-                        let dotColor = 'bg-slate-300'
-                        if (log.action.includes('delete')) dotColor = 'bg-rose-500'
-                        else if (log.action.includes('create') || log.action.includes('add') || log.action.includes('unblock')) dotColor = 'bg-emerald-500'
-                        else if (log.action.includes('update') || log.action.includes('status') || log.action.includes('role') || log.action.includes('block')) dotColor = 'bg-amber-500'
+                  {/* ACTIVITY LOGS DYNAMIC EMPTY STATE CHECK */}
+                  {activityPagination.items.length === 0 ? (
+                    <EmptyState
+                      icon={FolderOpen}
+                      title="No Activity Logs"
+                      description={activitySearch ? "No activity logs match your filter options." : "There are no administrator activity logs recorded on the platform."}
+                      onReset={activitySearch ? () => setActivitySearch('') : null}
+                    />
+                  ) : (
+                    <>
+                      {/* Redesigned activity timeline log */}
+                      <div className="relative pl-6 before:absolute before:left-3 before:top-4 before:bottom-4 before:w-[2px] before:bg-indigo-100">
+                        {activityPagination.items.map((log) => {
+                          let dotColor = 'bg-slate-300'
+                          if (log.action.includes('delete')) dotColor = 'bg-rose-500'
+                          else if (log.action.includes('create') || log.action.includes('add') || log.action.includes('unblock')) dotColor = 'bg-emerald-500'
+                          else if (log.action.includes('update') || log.action.includes('status') || log.action.includes('role') || log.action.includes('block')) dotColor = 'bg-amber-500'
 
-                        return (
-                          <div key={log._id} className="relative mb-6 last:mb-0">
-                            {/* Dot timeline indicator */}
-                            <span className={`absolute -left-6 top-1.5 h-3.5 w-3.5 rounded-full border-4 border-white ${dotColor} shadow-sm`} />
-                            
-                            <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm hover:shadow-md transition-all">
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
-                                      {log.action}
-                                    </span>
-                                    <span className="text-xs text-slate-400 font-mono">ID: {log._id}</span>
+                          return (
+                            <div key={log._id} className="relative mb-6 last:mb-0">
+                              {/* Dot timeline indicator */}
+                              <span className={`absolute -left-6 top-1.5 h-3.5 w-3.5 rounded-full border-4 border-white ${dotColor} shadow-sm`} />
+                              
+                              <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm hover:shadow-md transition-all">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                                        {log.action}
+                                      </span>
+                                      <span className="text-xs text-slate-400 font-mono">ID: {log._id}</span>
+                                    </div>
+                                    <p className="mt-2 text-sm font-semibold text-slate-800">{log.description}</p>
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                                      <span className="font-semibold text-slate-700">{log.user?.name || 'System'}</span>
+                                      <span>·</span>
+                                      <span className="uppercase font-bold text-[10px] tracking-wide text-slate-400">{log.user?.role || 'system'}</span>
+                                    </div>
                                   </div>
-                                  <p className="mt-2 text-sm font-semibold text-slate-800">{log.description}</p>
-                                  <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-                                    <span className="font-semibold text-slate-700">{log.user?.name || 'System'}</span>
-                                    <span>·</span>
-                                    <span className="uppercase font-bold text-[10px] tracking-wide text-slate-400">{log.user?.role || 'system'}</span>
-                                  </div>
+                                  <span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500 sm:self-center">
+                                    {formatDate(log.createdAt)}
+                                  </span>
                                 </div>
-                                <span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500 sm:self-center">
-                                  {formatDate(log.createdAt)}
-                                </span>
                               </div>
                             </div>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
+                          )
+                        })}
+                      </div>
 
-                  <AdminPagination page={activityPagination.page} totalPages={activityPagination.totalPages} onPageChange={setActivityPage} />
+                      <AdminPagination page={activityPagination.page} totalPages={activityPagination.totalPages} onPageChange={setActivityPage} />
+                    </>
+                  )}
                 </section>
               )}
 
@@ -1514,6 +1695,86 @@ const AdminDashboard = () => {
         </>
       )}
 
+      {/* Floating sliding bulk action bar */}
+      <AnimatePresence>
+        {((activeTab === 'users' && selectedUserIds.length > 0) || (activeTab === 'listings' && selectedListingIds.length > 0)) && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 z-40 w-[90%] max-w-2xl -translate-x-1/2 rounded-2xl bg-slate-900 px-6 py-4 text-white shadow-2xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border border-slate-800"
+          >
+            <div>
+              <p className="text-sm font-bold">
+                {activeTab === 'users' ? selectedUserIds.length : selectedListingIds.length} items selected
+              </p>
+              <p className="text-[10px] text-slate-400">Perform quick batch operations on checked rows</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {activeTab === 'users' && (
+                <>
+                  <button
+                    onClick={() => handleBulkUserStatus(true)}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Unblock
+                  </button>
+                  <button
+                    onClick={() => handleBulkUserStatus(false)}
+                    className="rounded-xl bg-amber-600 hover:bg-amber-500 px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Ban className="h-3.5 w-3.5" />
+                    Block
+                  </button>
+                  <button
+                    onClick={handleBulkDeleteUsers}
+                    className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </>
+              )}
+              {activeTab === 'listings' && (
+                <>
+                  <button
+                    onClick={() => handleBulkListingStatus(true)}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Activate
+                  </button>
+                  <button
+                    onClick={() => handleBulkListingStatus(false)}
+                    className="rounded-xl bg-amber-600 hover:bg-amber-500 px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Ban className="h-3.5 w-3.5" />
+                    Deactivate
+                  </button>
+                  <button
+                    onClick={handleBulkDeleteListings}
+                    className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedUserIds([])
+                  setSelectedListingIds([])
+                }}
+                className="rounded-xl bg-white/10 hover:bg-white/20 p-2 text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Enhanced detail auditing inspectors */}
       <AnimatePresence>
         {selectedEntity && (
@@ -1537,7 +1798,7 @@ const AdminDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedEntity(null)}
-                  className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition"
+                  className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1548,7 +1809,7 @@ const AdminDashboard = () => {
                 <div className="flex border-b border-slate-100 mt-4 gap-1.5 p-1 bg-slate-50 rounded-xl">
                   <button
                     onClick={() => setAuditorTab('overview')}
-                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'overview' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition cursor-pointer ${auditorTab === 'overview' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Overview
                   </button>
@@ -1556,13 +1817,13 @@ const AdminDashboard = () => {
                     <>
                       <button
                         onClick={() => setAuditorTab('listings')}
-                        className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'listings' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                        className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition cursor-pointer ${auditorTab === 'listings' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
                       >
                         Listings ({userAuditorListings.length})
                       </button>
                       <button
                         onClick={() => setAuditorTab('interests')}
-                        className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'interests' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                        className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition cursor-pointer ${auditorTab === 'interests' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
                       >
                         Interests ({userAuditorInterests.length})
                       </button>
@@ -1571,7 +1832,7 @@ const AdminDashboard = () => {
                   {selectedType === 'listing' && (
                     <button
                       onClick={() => setAuditorTab('interests')}
-                      className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${auditorTab === 'interests' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
+                      className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition cursor-pointer ${auditorTab === 'interests' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}
                     >
                       Prospects ({listingAuditorInterests.length})
                     </button>
@@ -1638,7 +1899,7 @@ const AdminDashboard = () => {
                               </div>
                               <button
                                 onClick={() => handleToggleListing(listing._id, listing.isActive)}
-                                className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition ${listing.isActive ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20' : 'bg-slate-200 text-slate-700 hover:bg-slate-350'}`}
+                                className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${listing.isActive ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20' : 'bg-slate-200 text-slate-700 hover:bg-slate-350'}`}
                               >
                                 {listing.isActive ? 'Active' : 'Hidden'}
                               </button>
@@ -1846,14 +2107,14 @@ const AdminDashboard = () => {
                     onClick={handleExportChatTranscript}
                     disabled={chatMessages.length === 0}
                     title="Export logs as txt"
-                    className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40"
+                    className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 cursor-pointer"
                   >
                     <FileDown className="h-4.5 w-4.5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedChat(null)}
-                    className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition"
+                    className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition cursor-pointer"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1898,6 +2159,48 @@ const AdminDashboard = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* FLOATING TOAST NOTIFICATIONS STACK */}
+      <div className="fixed bottom-6 right-6 left-6 md:left-auto z-50 flex flex-col gap-2.5 max-w-sm w-auto md:w-full pointer-events-none">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className={`rounded-2xl border p-4 shadow-xl backdrop-blur-md flex items-center justify-between gap-3 text-sm pointer-events-auto ${
+                toast.type === 'error'
+                  ? 'border-rose-200 bg-rose-50/90 text-rose-800'
+                  : toast.type === 'warning'
+                  ? 'border-amber-200 bg-amber-50/90 text-amber-800'
+                  : toast.type === 'info'
+                  ? 'border-indigo-200 bg-indigo-50/90 text-indigo-800'
+                  : 'border-emerald-200 bg-emerald-50/90 text-emerald-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {toast.type === 'error' ? (
+                  <AlertCircle className="h-5 w-5 text-rose-500 shrink-0" />
+                ) : toast.type === 'warning' ? (
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                ) : toast.type === 'info' ? (
+                  <Clock className="h-5 w-5 text-indigo-500 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                )}
+                <span className="font-semibold">{toast.message}</span>
+              </div>
+              <button
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="text-slate-400 hover:text-slate-600 transition cursor-pointer shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

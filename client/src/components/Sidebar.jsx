@@ -63,7 +63,6 @@ const Sidebar = () => {
         {isOwner && (
           <>
             <SectionLabel label="Owner Tools" />
-            <NavItem to="/dashboard/owner" icon={Building2} label="Owner Overview" end />
             <NavItem to="/dashboard/owner/listings" icon={List} label="My Listings" />
             <NavItem to="/dashboard/owner/listings/new" icon={PlusSquare} label="Add Listing" />
             <NavItem to="/dashboard/owner/interests" icon={Heart} label="Interest Requests" />
