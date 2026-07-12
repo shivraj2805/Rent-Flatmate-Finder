@@ -4,6 +4,7 @@ import { MapPin, Calendar, Building2, Search, SlidersHorizontal, IndianRupee, Ey
 import listingService from '../../services/listingService.js'
 import interestService from '../../services/interestService.js'
 import useAuth from '../../hooks/useAuth.jsx'
+import CompatibilityDetailCard from '../../components/compatibility/CompatibilityDetailCard.jsx'
 
 const roomTypeLabel = {
   'private-room': 'Private Room',
@@ -459,29 +460,7 @@ const BrowseListings = () => {
 
               {/* Compatibility Match Detail Panel */}
               {selectedListing.compatibility && (
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4.5 w-4.5 text-indigo-600 shrink-0 animate-pulse" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-900" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                        Flatmate Compatibility Match
-                      </h4>
-                    </div>
-                    <span className={`rounded-xl px-2.5 py-1 text-xs font-bold text-white shadow-sm ${
-                      selectedListing.compatibility.score >= 80 ? 'bg-emerald-600' :
-                      selectedListing.compatibility.score >= 50 ? 'bg-amber-500' :
-                      'bg-rose-500'
-                    }`}>
-                      {selectedListing.compatibility.score}% Match
-                    </span>
-                  </div>
-                  <p className="text-xs text-indigo-800 leading-relaxed font-medium">
-                    {selectedListing.compatibility.explanation}
-                  </p>
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-indigo-200/50 text-[9px] text-indigo-500 font-semibold uppercase tracking-wider">
-                    <span>Source: {selectedListing.compatibility.source === 'ai' ? 'Gemini AI Evaluation' : 'Rule-Based Fallback Engine'}</span>
-                  </div>
-                </div>
+                <CompatibilityDetailCard compatibility={selectedListing.compatibility} />
               )}
 
               {/* Description */}

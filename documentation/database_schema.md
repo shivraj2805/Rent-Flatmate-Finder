@@ -10,7 +10,7 @@ Below is the database relationship mapping showing how users, profiles, room lis
 
 ```mermaid
 erDiagram
-    User ||--o| TenantProfile : "has profile (1:1)"
+    User ||--o{ TenantProfile : "has profile (1:1)"
     User ||--o{ Listing : "owns listings (1:N)"
     User ||--o{ Interest : "submits/receives interest (1:N)"
     User ||--o{ Chat : "participates in (1:N)"
@@ -21,6 +21,7 @@ erDiagram
     Listing ||--o{ Compatibility : "evaluated in (1:N)"
     Listing ||--o{ Interest : "targeted by (1:N)"
     Listing ||--o{ Chat : "context of (1:N)"
+    Listing ||--o{ Message : "attached context (1:N)"
     
     TenantProfile ||--o{ Compatibility : "evaluated in (1:N)"
     
@@ -60,21 +61,16 @@ Stores tenant compatibility preferences.
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
 | `user` | ObjectId | Required, Unique, Ref: `User` | User reference. |
-| `preferredLocations` | Array[String] | Required (min: 1) | Target neighborhoods the tenant is searching in. |
+| `preferredLocations` | Array[String] | Required (min: 1) | Target Pune locations. |
 | `budgetRange.min` | Number | Required, Min: 0 | Bottom threshold rent budget. |
 | `budgetRange.max` | Number | Required, Min: 0 | Maximum limit rent budget. |
-| `budgetRange.currency`| String | Default: `USD` | Rent currency. |
+| `budgetRange.currency`| String | Default: `INR` | Rent currency. |
 | `moveInDate` | Date | Required | Target lease starting date. |
-| `roomPreferences` | Array[String] | Default: `[]` | Room layout features (e.g. `studio`, `private-room`). |
-| `lifestylePreferences`| Array[String] | Default: `[]` | Life rules (e.g. `non-smoker`, `vegetarian`). |
+| `roomPreferences` | Array[String] | Default: `[]` | Room layout preferences. |
+| `lifestylePreferences`| Array[String] | Default: `[]` | Life habits tags. |
 | `bio` | String | Max length: 1000 | Custom user introduction. |
-| `gender` | String | Required, Enum: `['male', 'female', 'other']` | Gender specification. |
-| `isSearching` | Boolean | Default: `true` | Search status toggle. |
-
-- **Indexes**:
-  - `{ user: 1 }` (Unique)
-  - `{ moveInDate: 1, isSearching: 1 }` (Optimization for matching loops)
-  - `{ preferredLocations: 1 }` (Location indexing)
+| `gender` | String | Required, Enum: `['male', 'female', 'other']` | Gender. |
+| `isSearching` | Boolean | Default: `true` | Search status. |
 
 ---
 
@@ -83,129 +79,85 @@ Room listings published by landlords.
 
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
-| `owner` | ObjectId | Required, Ref: `User` | Landlord/Owner identification reference. |
-| `title` | String | Required, Max: 150 | Search headline for the room listing. |
-| `description` | String | Required, Max: 5000 | In-depth property description. |
-| `location` | String | Required | Neighborhood/address in Pune. |
+| `owner` | ObjectId | Required, Ref: `User` | Landlord identifier. |
+| `title` | String | Required, Max: 150 | Headline of the listing. |
+| `description` | String | Required, Max: 5000 | Detailed room description. |
+| `location` | String | Required | Area neighborhood. |
 | `rent` | Number | Required, Min: 0 | Monthly rent amount. |
 | `roomType` | String | Required, Enum: `['private-room', 'shared-room', 'studio', 'apartment', 'other']` | Room configuration. |
-| `genderPreference` | String | Enum: `['any', 'male', 'female', 'non-binary', 'couple']` | Targeted roommate gender. |
 | `furnished` | Boolean | Default: `false` | Furnishing status. |
-| `amenities` | Array[String] | Default: `[]` | Included benefits (e.g., `wifi`, `ac`, `parking`). |
-| `images` | Array[Object] | Default: `[]` | Image metadata containing `url` and `publicId` from Cloudinary. |
+| `amenities` | Array[String] | Default: `[]` | Included benefits. |
+| `images` | Array[Object] | Default: `[]` | Images meta. |
 | `isActive` | Boolean | Default: `true` | Visibility toggle. |
-| `status` | String | Enum: `['active', 'filled']`, Default: `active` | Listing progress state. |
-| `compatibilitySummary`| Object | Sub-fields: `topScore` (Num), `topExplanation` (Str), `evaluatedAt` (Date) | Summary calculations stored for index optimizations. |
-
-- **Indexes**:
-  - `{ owner: 1, createdAt: -1 }` (Owner dashboard loading)
-  - `{ location: 1, rent: 1, availableFrom: 1 }` (Search filters query optimization)
-  - `{ title: 'text', description: 'text', location: 'text' }` (Text indexes to support wildcard search bars)
+| `status` | String | Enum: `['active', 'filled']`, Default: `active` | Progress state. |
 
 ---
 
 ### 4. `compatibilities` Collection
-Calculated alignment ratings for listings against tenant profiles.
+Evaluated compatibility score metrics of room listings vs tenant preferences.
 
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
-| `listing` | ObjectId | Required, Ref: `Listing` | Associated Listing. |
-| `tenantProfile` | ObjectId | Required, Ref: `TenantProfile` | Associated Tenant Profile. |
-| `score` | Number | Required, Min: 0, Max: 100 | Final compatibility score percentage. |
-| `explanation` | String | Required, Max: 4000 | Explanatory statement summarizing match. |
-| `source` | String | Enum: `['ai', 'rule-based']` | Calculation origin logic. |
-| `evaluatedAt` | Date | Default: `Date.now` | Calculation timestamp. |
+| `listing` | ObjectId | Required, Ref: `Listing` | Legacy Listing ref. |
+| `tenantProfile` | ObjectId | Required, Ref: `TenantProfile` | Legacy TenantProfile ref. |
+| `listingId` | ObjectId | Required, Ref: `Listing` | Listing ID identifier. |
+| `tenantId` | ObjectId | Required, Ref: `User` | User ID of the tenant. |
+| `score` | Number | Required, Min: 0, Max: 100 | Overall match score. |
+| `explanation` | String | Required | Structured text summary. |
+| `strengths` | Array[String] | Default: `[]` | Detailed matching points. |
+| `weaknesses` | Array[String] | Default: `[]` | Areas of friction. |
+| `scoringBreakdown` | Object | Sub-fields: `budgetScore` (0-40), `locationScore` (0-30), `dateScore` (0-20), `roomTypeScore` (0-10) | Weighted categories breakdown. |
+| `llmProvider` | String | Default: `null` | Evaluator platform (e.g. `"Gemini"`). |
+| `scoringMethod` | String | Enum: `['LLM', 'Rule-Based']` | Scoring engine used. |
 
 - **Indexes**:
-  - `{ listing: 1, tenantProfile: 1 }` (Unique compound index)
-  - `{ tenantProfile: 1, score: -1 }` (Retrieving highest scored rooms for tenant)
-  - `{ listing: 1, score: -1 }` (Retrieving highest scored prospects for landlord)
+  - `{ listing: 1, tenantProfile: 1 }` (Unique)
+  - `{ listingId: 1, tenantId: 1 }` (Unique)
+  - `{ tenantId: 1, score: -1 }` (Highest score search indexing)
 
 ---
 
 ### 5. `interests` Collection
-Expression of match requests between flatmate searchers.
+Expressions of match requests between flatmate searchers.
 
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
-| `tenant` | ObjectId | Required, Ref: `User` | Request sender. |
-| `listing` | ObjectId | Required, Ref: `Listing` | Targeted room post. |
-| `owner` | ObjectId | Required, Ref: `User` | Landlord receiving the request. |
-| `status` | String | Enum: `['pending', 'accepted', 'declined']` | Match status tracking. |
-| `tenantMessage` | String | Max: 1500 | Initial introduction note. |
-| `ownerResponseMessage` | String | Max: 1500 | Landlord response comments. |
-| `respondedAt` | Date | Default: `null` | Response action timestamp. |
-
-- **Indexes**:
-  - `{ tenant: 1, listing: 1 }` (Unique - prevents multiple requests for the same room)
-  - `{ owner: 1, status: 1, createdAt: -1 }` (Owner request feed filters)
-  - `{ tenant: 1, status: 1, createdAt: -1 }` (Tenant request feed filters)
+| `tenant` | ObjectId | Required, Ref: `User` | Sender user. |
+| `listing` | ObjectId | Required, Ref: `Listing` | Room listing context. |
+| `owner` | ObjectId | Required, Ref: `User` | Receiving landlord. |
+| `status` | String | Enum: `['pending', 'accepted', 'declined']` | Request status. |
+| `tenantMessage` | String | Max: 1500 | Introduction note. |
+| `ownerResponseMessage` | String | Max: 1500 | Landlord response. |
 
 ---
 
-### 6. `chats` & `messages` Collections
-Stores text communication history.
+### 6. `chats` Collection
+Contains metadata about active conversation rooms.
 
-#### `chats`
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
-| `listing` | ObjectId | Required, Ref: `Listing` | Thread listing context. |
+| `listing` | ObjectId | Required, Ref: `Listing` | Room context. |
 | `tenant` | ObjectId | Required, Ref: `User` | Tenant participant. |
 | `owner` | ObjectId | Required, Ref: `User` | Landlord participant. |
-| `interest` | ObjectId | Required, Unique, Ref: `Interest` | Linked interest request ID that unlocked the chat. |
-| `lastMessage` | ObjectId | Ref: `Message`, Default: `null` | Reference pointer to the newest message. |
-| `lastMessageAt` | Date | Default: `null` | Newest message timestamp. |
-| `tenantArchived` | Boolean | Default: `false` | Archive toggle. |
-| `ownerArchived` | Boolean | Default: `false` | Archive toggle. |
-
-- **Indexes**:
-  - `{ tenant: 1, owner: 1, listing: 1 }` (Unique compound index)
-  - `{ owner: 1, lastMessageAt: -1 }` (Inbox list loading optimization)
-  - `{ tenant: 1, lastMessageAt: -1 }` (Inbox list loading optimization)
-
-#### `messages`
-| Field | Type | Attributes | Description |
-| :--- | :--- | :--- | :--- |
-| `chat` | ObjectId | Required, Ref: `Chat` | Chat room container. |
-| `sender` | ObjectId | Required, Ref: `User` | Message author. |
-| `content` | String | Required, Max: 4000 | Text payload. |
-| `readBy` | Array[ObjectId] | Ref: `User`, Default: `[]` | Users who read the message. |
-| `deliveredAt` | Date | Default: `Date.now` | Socket delivery timestamp. |
-| `replyTo` | ObjectId | Ref: `Message`, Default: `null` | Message context reference. |
-
-- **Indexes**:
-  - `{ chat: 1, createdAt: 1 }` (Loads conversation logs sequentially)
-  - `{ sender: 1, createdAt: -1 }` (Retrieves sender logs)
+| `interest` | ObjectId | Required, Unique, Ref: `Interest` | Linked accepted interest request. |
+| `lastMessage` | ObjectId | Ref: `Message` | Pointer to the newest message. |
+| `lastMessageAt` | Date | Index | Newest message timestamp. |
 
 ---
 
-### 7. `notifications` Collection
-Alert structures for in-app push indicators.
+### 7. `messages` Collection
+Stores persistent conversation bubbles sent in chat rooms.
 
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
-| `recipient` | ObjectId | Required, Ref: `User` | Targeted alert receiver. |
-| `sender` | ObjectId | Ref: `User` | Alert trigger originator user. |
-| `type` | String | Enum: `['interest_received', 'interest_accepted', 'interest_declined', 'new_message']` | Notification event type. |
-| `title` | String | Required | Notification title. |
-| `content` | String | Required | Detailed alert content string. |
-| `isRead` | Boolean | Default: `false` | Read status tracking. |
-| `link` | String | Optional | Navigation URL link target. |
-
-- **Indexes**:
-  - `{ recipient: 1, isRead: 1, createdAt: -1 }` (Optimizes navbar dropdown loading)
-
----
-
-### 8. `activitylogs` Collection
-Audit trails logged for admin analytics.
-
-| Field | Type | Attributes | Description |
-| :--- | :--- | :--- | :--- |
-| `action` | String | Required | Executed event (e.g. `USER_LOGIN`, `LISTING_CREATED`). |
-| `user` | ObjectId | Ref: `User` | Responsible user (null if system-triggered). |
-| `description` | String | Required, Max: 2000 | Detailed description of the action. |
-
-- **Indexes**:
-  - `{ createdAt: -1 }` (Audit log timeline retrieval)
-  - `{ action: 1, createdAt: -1 }` (Filter optimization)
+| `chat` | ObjectId | Required, Ref: `Chat` | Legacy Chat room container. |
+| `sender` | ObjectId | Required, Ref: `User` | Legacy Message sender. |
+| `content` | String | Required | Legacy content string. |
+| `chatId` | ObjectId | Required, Ref: `Chat` | Chat room identifier. |
+| `senderId` | ObjectId | Required, Ref: `User` | Author user ID. |
+| `receiverId` | ObjectId | Required, Ref: `User` | Recipient user ID. |
+| `listingId` | ObjectId | Required, Ref: `Listing` | Room listing context. |
+| `message` | String | Required | Message text content. |
+| `messageType` | String | Enum: `['text', 'image', 'system']`, Default: `text` | Content type classifier. |
+| `timestamp` | Date | Default: `Date.now`, Index | Delivery timestamp. |
+| `replyTo` | ObjectId | Ref: `Message`, Default: `null` | Quote reference message ID. |

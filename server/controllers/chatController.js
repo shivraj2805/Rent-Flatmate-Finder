@@ -17,12 +17,16 @@ const getChats = asyncHandler(async (req, res) => {
 })
 
 /**
- * @desc    Get message history for a chat
+ * @desc    Get message history for a chat (with pagination support)
  * @route   GET /api/chats/:id/messages
  * @access  Private
  */
 const getMessages = asyncHandler(async (req, res) => {
-  const messages = await chatService.getChatMessages(req.params.id, req.user._id)
+  const { limit, before } = req.query
+  const messages = await chatService.getChatMessages(req.params.id, req.user._id, limit, before)
+
+  // Reverse messages to chronological order so oldest is first in the rendering list
+  messages.reverse()
 
   res.json({
     success: true,
@@ -45,7 +49,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   const message = await chatService.saveMessage(req.params.id, req.user._id, content, replyToId)
 
-  // Real-time broadcast using Socket.IO
+  // Real-time broadcast using Socket.IO to the room members
   const io = req.app.get('io')
   if (io) {
     io.to(req.params.id).emit('receive_message', message)

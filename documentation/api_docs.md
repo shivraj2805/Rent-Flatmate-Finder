@@ -71,82 +71,19 @@ Verifies credentials and returns a JSON Web Token.
   }
   ```
 
-### 3. Get Active User Details
-Retrieves detailed profile data of the logged-in user.
-- **Endpoint**: `GET /auth/me`
-- **Access**: Private (All Roles)
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "user": {
-      "id": "60d000000000000000000001",
-      "name": "Jane Doe",
-      "email": "jane@example.com",
-      "role": "tenant",
-      "avatar": "",
-      "isActive": true
-    }
-  }
-  ```
-
-### 4. Update Profile Settings
-Updates basic profile settings for the authenticated user.
-- **Endpoint**: `PUT /auth/profile`
-- **Access**: Private (All Roles)
-- **Request Body**:
-  ```json
-  {
-    "name": "Jane Smith",
-    "email": "janesmith@example.com"
-  }
-  ```
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Profile updated successfully",
-    "user": {
-      "id": "60d000000000000000000001",
-      "name": "Jane Smith",
-      "email": "janesmith@example.com",
-      "role": "tenant"
-    }
-  }
-  ```
-
-### 5. Update Password
-Changes password credentials.
-- **Endpoint**: `PUT /auth/password`
-- **Access**: Private (All Roles)
-- **Request Body**:
-  ```json
-  {
-    "currentPassword": "Password123",
-    "newPassword": "NewSecurePassword123"
-  }
-  ```
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Password updated successfully"
-  }
-  ```
-
 ---
 
 ## 🏠 Listing Endpoints (`/listings`)
 
 ### 1. Get All Listings
-Retrieves active room listings. Supports filtering and text searching.
+Retrieves active room listings. Includes calculated compatibility scores against the requesting tenant's preferences.
 - **Endpoint**: `GET /listings`
 - **Access**: Private (All Roles)
 - **Query Parameters**:
   - `search`: Matches query in title, description, or location.
   - `location`: Matches listing location.
-  - `minRent` / `maxRent`: Filters listings by rent range.
-  - `roomType`: Filters by listing room type (e.g. `studio`, `apartment`).
+  - `maxRent`: Filters listings by rent range.
+  - `roomType`: Filters by room type.
 - **Success Response (`200 OK`)**:
   ```json
   {
@@ -161,65 +98,27 @@ Retrieves active room listings. Supports filtering and text searching.
         "roomType": "studio",
         "availableFrom": "2026-08-01T00:00:00.000Z",
         "furnished": true,
-        "images": []
+        "images": [],
+        "compatibility": {
+          "score": 91,
+          "budgetScore": 38,
+          "locationScore": 30,
+          "dateScore": 13,
+          "roomTypeScore": 10,
+          "strengths": [
+            "Rent fits your budget range",
+            "Located in your preferred area"
+          ],
+          "weaknesses": [
+            "Available 3 days after move-in date"
+          ],
+          "explanation": "Excellent overall compatibility because the budget and preferred location align closely.",
+          "scoringMethod": "LLM",
+          "llmProvider": "Gemini",
+          "source": "ai"
+        }
       }
     ]
-  }
-  ```
-
-### 2. Create Listing
-Publishes a new room listing (supports files via `multipart/form-data`).
-- **Endpoint**: `POST /listings`
-- **Access**: Private (Owner or Admin)
-- **Form Data Fields**:
-  - `title`, `description`, `location`, `rent`, `roomType`, `availableFrom`, `genderPreference`, `furnished`, `amenities` (array/comma-separated)
-  - `images`: File attachments (maximum 10 files)
-- **Success Response (`201 Created`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Listing created successfully",
-    "listing": {
-      "_id": "60d000000000000000000002",
-      "owner": "60d000000000000000000009",
-      "title": "Modern Studio in Koregaon Park",
-      "location": "Koregaon Park, Pune",
-      "rent": 15000,
-      "images": [
-        {
-          "url": "https://res.cloudinary.com/...",
-          "publicId": "roomsync/abcde"
-        }
-      ]
-    }
-  }
-  ```
-
-### 3. Get Listing by ID
-Retrieves details of a specific property listing, including its calculated compatibility scores if requested.
-- **Endpoint**: `GET /listings/:id`
-- **Access**: Private (All Roles)
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "listing": { ... },
-    "compatibility": {
-      "score": 95,
-      "explanation": "Perfect match for your budget and locations."
-    }
-  }
-  ```
-
-### 4. Delete Listing
-Removes a listing.
-- **Endpoint**: `DELETE /listings/:id`
-- **Access**: Private (Listing Owner or Admin)
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Listing deleted successfully"
   }
   ```
 
@@ -231,18 +130,6 @@ Removes a listing.
 Fetches preferences and profiles configured for the logged-in user.
 - **Endpoint**: `GET /tenant/profile`
 - **Access**: Private (All Roles)
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "profile": {
-      "preferredLocations": ["Koregaon Park", "Viman Nagar"],
-      "budgetRange": { "min": 10000, "max": 18000 },
-      "moveInDate": "2026-08-01T00:00:00.000Z",
-      "isSearching": true
-    }
-  }
-  ```
 
 ### 2. Update/Create Profile
 Upserts preferred locations, budgets, dates, and bio.
@@ -255,18 +142,10 @@ Upserts preferred locations, budgets, dates, and bio.
     "budgetRange": { "min": 12000, "max": 16000 },
     "moveInDate": "2026-08-01",
     "roomPreferences": ["studio", "private-room"],
-    "lifestylePreferences": ["non-smoker", "pet-friendly"],
+    "lifestylePreferences": ["non-smoker"],
     "bio": "Software engineer looking for a room.",
     "gender": "female",
     "isSearching": true
-  }
-  ```
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Tenant profile updated successfully",
-    "profile": { ... }
   }
   ```
 
@@ -278,30 +157,9 @@ Upserts preferred locations, budgets, dates, and bio.
 Initiates a match request to check compatibility and unlock direct messaging.
 - **Endpoint**: `POST /interests`
 - **Access**: Private (Tenant or Admin)
-- **Request Body**:
-  ```json
-  {
-    "listing": "60d000000000000000000002",
-    "tenantMessage": "Hi, I am interested in your room listing!"
-  }
-  ```
-- **Success Response (`201 Created`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Interest request submitted successfully",
-    "interest": {
-      "_id": "60d000000000000000000003",
-      "tenant": "60d000000000000000000001",
-      "listing": "60d000000000000000000002",
-      "owner": "60d000000000000000000009",
-      "status": "pending"
-    }
-  }
-  ```
 
 ### 2. Respond to Interest Request
-Allows the listing owner to accept or decline interest.
+Allows the listing owner to accept or decline interest. Accepting unlocks the chat room.
 - **Endpoint**: `PATCH /interests/:id/status`
 - **Access**: Private (Owner or Admin)
 - **Request Body**:
@@ -311,25 +169,14 @@ Allows the listing owner to accept or decline interest.
     "ownerResponseMessage": "Sure, let's chat!"
   }
   ```
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Interest request updated",
-    "interest": {
-      "_id": "60d000000000000000000003",
-      "status": "accepted",
-      "ownerResponseMessage": "Sure, let's chat!"
-    }
-  }
-  ```
 
 ---
 
-## 💬 Chat Endpoints (`/chats`)
+## 💬 Chat Messenger Endpoints (`/chats`)
 
 ### 1. Get User Chats
 Retrieves list of active chat rooms the logged-in user participates in.
+- **Access Rule**: Only returns rooms associated with an **accepted** interest request.
 - **Endpoint**: `GET /chats`
 - **Access**: Private (Tenant or Owner)
 - **Success Response (`200 OK`)**:
@@ -342,25 +189,36 @@ Retrieves list of active chat rooms the logged-in user participates in.
         "listing": { "title": "Modern Studio" },
         "tenant": { "name": "Jane Doe" },
         "owner": { "name": "John Smith" },
+        "interest": { "_id": "60d000000000000000000003", "status": "accepted" },
         "lastMessage": null
       }
     ]
   }
   ```
 
-### 2. Fetch Chat Messages
-Loads all historical message entries for a specific chat room.
+### 2. Fetch Chat Messages (With Pagination)
+Loads historical message entries for a specific chat room.
+- **Access Rule**: Rejected with `403 Forbidden` if the interest request status is not accepted.
 - **Endpoint**: `GET /chats/:id/messages`
 - **Access**: Private (Participants only)
+- **Query Parameters**:
+  - `limit`: Number of messages to return (default: `50`).
+  - `before`: ISO Date string. Fetches messages sent *prior* to this timestamp.
 - **Success Response (`200 OK`)**:
   ```json
   {
     "success": true,
+    "count": 1,
     "messages": [
       {
         "_id": "60d000000000000000000006",
-        "sender": "60d000000000000000000001",
-        "content": "Hi John!",
+        "chatId": "60d000000000000000000005",
+        "senderId": "60d000000000000000000001",
+        "receiverId": "60d000000000000000000009",
+        "listingId": "60d000000000000000000002",
+        "message": "Hi John!",
+        "messageType": "text",
+        "timestamp": "2026-07-12T14:00:00.000Z",
         "createdAt": "2026-07-12T14:00:00.000Z"
       }
     ]
@@ -368,96 +226,31 @@ Loads all historical message entries for a specific chat room.
   ```
 
 ### 3. Send Message
-Sends a message into the chat room.
+Sends a text message inside a chat.
+- **Access Rule**: Rejected with `403 Forbidden` if the interest request status is not accepted.
 - **Endpoint**: `POST /chats/:id/messages`
 - **Access**: Private (Participants only)
 - **Request Body**:
   ```json
   {
-    "content": "Hello, is the room still available?"
-  }
-  ```
-- **Success Response (`201 Created`)**:
-  ```json
-  {
-    "success": true,
-    "message": {
-      "_id": "60d000000000000000000007",
-      "chat": "60d000000000000000000005",
-      "sender": "60d000000000000000000001",
-      "content": "Hello, is the room still available?"
-    }
+    "content": "Hello, is the room still available?",
+    "replyToId": "60d000000000000000000006" // optional (for quoting)
   }
   ```
 
 ---
 
-## 🔔 Notification Endpoints (`/notifications`)
+## 🔌 Socket.IO Event Guide
 
-### 1. Get Notifications
-Retrieves push notifications for the active user.
-- **Endpoint**: `GET /notifications`
-- **Access**: Private (All Roles)
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "notifications": [
-      {
-        "_id": "60d000000000000000000008",
-        "type": "interest_received",
-        "title": "New Interest Request",
-        "content": "Jane Doe expressed interest in Modern Studio.",
-        "isRead": false
-      }
-    ]
-  }
-  ```
+Socket connections require a JWT token passed during handshake initialization:
+```javascript
+const socket = io(SOCKET_URL, {
+  auth: { token: localStorage.getItem('rentFlatmateToken') }
+});
+```
 
-### 2. Mark Notification as Read
-Updates `isRead` status of a single alert.
-- **Endpoint**: `PATCH /notifications/:id/read`
-- **Access**: Private
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "notification": {
-      "_id": "60d000000000000000000008",
-      "isRead": true
-    }
-  }
-  ```
-
-### 3. Mark All Read
-Marks all notifications for the active user as read.
-- **Endpoint**: `POST /notifications/read-all`
-- **Access**: Private
-- **Success Response (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "message": "All notifications marked as read"
-  }
-  ```
-
----
-
-## 🛡️ Admin Command Endpoints (`/admin`)
-
-All Admin routes require user accounts to have `role: 'admin'`.
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/admin/stats` | Retrieves total users, listings, requests, chats, and compatibility stats. |
-| `GET` | `/admin/users` | Lists and searches all users registered on the platform. |
-| `GET` | `/admin/listings` | Lists and searches all room listings posted. |
-| `GET` | `/admin/interests` | Displays all interest requests and matches status. |
-| `GET` | `/admin/chats` | Displays all chat logs and rooms. |
-| `GET` | `/admin/activity` | Fetches historical log timeline for security audits. |
-| `POST` | `/admin/users/bulk-status` | Actives/blocks multiple user accounts in one action. |
-| `POST` | `/admin/users/bulk-delete` | Deletes multiple user accounts. |
-| `POST` | `/admin/listings/bulk-status` | Actives/deactivates multiple listings in bulk. |
-| `POST` | `/admin/listings/bulk-delete` | Deletes multiple listings in bulk. |
-| `DELETE` | `/admin/users/:id` | Deletes a single user profile. |
-| `DELETE` | `/admin/listings/:id` | Deletes a single listing. |
+### Supported Events:
+- `join_room` (emitted by client with `roomId`): Joins the room for a specific chat room. Server validates user membership and interest acceptance.
+- `join_user_room` (emitted by client with `userId`): Joins the user's personal room for notification pushes. Server validates ownership.
+- `typing` / `stop_typing` (emitted by client): Displays typing bubbles to the other participant in the chat room.
+- `user_online` / `user_offline` (broadcast by server): Alerts clients when users change online statuses.
