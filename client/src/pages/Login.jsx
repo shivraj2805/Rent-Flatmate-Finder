@@ -82,6 +82,14 @@ const Login = () => {
 
         {/* Right Side: Form Panel */}
         <section className="p-8 sm:p-12 flex flex-col justify-center text-left">
+          <Link 
+            to="/" 
+            className="lg:hidden mb-6 inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+          >
+            <House className="h-3.5 w-3.5" />
+            Back to Home
+          </Link>
+
           <div className="mb-8">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Welcome Back</p>
             <h2 
