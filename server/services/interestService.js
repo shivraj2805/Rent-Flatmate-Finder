@@ -34,12 +34,13 @@ const createInterest = async ({ tenantId, listingId, tenantMessage }) => {
     throw createError('You have already expressed interest in this listing', 409)
   }
 
+  const profile = await TenantProfile.findOne({ user: tenantId })
+  if (!profile) {
+    throw createError('Please create a tenant profile before expressing interest', 400)
+  }
+
   // Validate gender matching if listing has gender preference
   if (listing.genderPreference && listing.genderPreference !== 'any') {
-    const profile = await TenantProfile.findOne({ user: tenantId })
-    if (!profile) {
-      throw createError('Please create a tenant profile before expressing interest', 400)
-    }
     if (profile.gender !== listing.genderPreference) {
       throw createError(`This room has a gender preference of ${listing.genderPreference}. Your profile gender (${profile.gender}) does not match.`, 400)
     }
@@ -68,6 +69,30 @@ const createInterest = async ({ tenantId, listingId, tenantMessage }) => {
     content: `${tenantName} has expressed interest in your listing: "${listing.title}"`,
     link: '/dashboard/owner/interests',
   }).catch(() => {})
+
+  // Trigger high compatibility email notification to owner if score is above 80
+  try {
+    const Compatibility = require('../models/Compatibility')
+    let compatibility = await Compatibility.findOne({ listing: listingId, tenantProfile: profile._id })
+
+    // If not calculated yet, run calculation
+    if (!compatibility) {
+      const { evaluateAndSaveCompatibility } = require('./compatibilityService')
+      compatibility = await evaluateAndSaveCompatibility(listingId, profile._id)
+    }
+
+    if (compatibility && compatibility.score > 80) {
+      const emailService = require('./emailService')
+      const ownerUser = await User.findById(listing.owner)
+      if (ownerUser && tenantUser) {
+        emailService.sendHighCompatibilityEmail(ownerUser, tenantUser, listing, compatibility.score, compatibility.explanation).catch((err) => {
+          console.error(`[Interest High Compatibility Email Error] Async send failed:`, err.message)
+        })
+      }
+    }
+  } catch (err) {
+    console.error(`[Interest High Compatibility Email Error] Setup failed:`, err.message)
+  }
 
   return interest
 }
