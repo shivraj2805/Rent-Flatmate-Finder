@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { House, ArrowRight, Sparkles } from 'lucide-react'
 import useAuth from '../hooks/useAuth.jsx'
+import logoImg from '../assets/logo.png'
 
 const Register = () => {
   const navigate = useNavigate()
@@ -80,16 +81,8 @@ const Register = () => {
         {/* Left Side: Brand Panel */}
         <section className="hidden flex-col justify-between border-r border-slate-100 bg-[linear-gradient(135deg,#fcfcfd_0%,#f8fafc_60%,#eef2ff_100%)] p-10 lg:flex text-left">
           <div className="space-y-6">
-            <Link to="/" className="flex items-center gap-2.5 text-slate-900 group">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/10">
-                <House className="h-4.5 w-4.5" />
-              </span>
-              <span 
-                className="text-lg font-bold tracking-tight"
-                style={{ fontFamily: 'Outfit, sans-serif' }}
-              >
-                RoomSync
-              </span>
+            <Link to="/" className="flex items-center group">
+              <img src={logoImg} alt="RoomSync Logo" className="h-20 w-auto object-contain hover:scale-102 transition-transform duration-300" />
             </Link>
 
             <div className="space-y-4 pt-4">

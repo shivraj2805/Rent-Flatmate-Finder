@@ -4,6 +4,7 @@ import { House, LogOut, Bell, ChevronDown, User, Shield, Menu, X } from 'lucide-
 import { io } from 'socket.io-client'
 import useAuth from '../hooks/useAuth.jsx'
 import notificationService from '../services/notificationService.js'
+import logoImg from '../assets/logo.png'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
@@ -108,16 +109,8 @@ const Navbar = () => {
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm shadow-slate-100">
         <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between px-6 lg:px-8">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200 transition-transform group-hover:scale-105">
-              <House className="h-4 w-4" />
-            </span>
-            <span
-              className="text-lg font-bold tracking-tight text-slate-900"
-              style={{ fontFamily: 'Outfit, sans-serif' }}
-            >
-              Room<span className="text-indigo-600">Sync</span>
-            </span>
+          <Link to="/" className="flex items-center group">
+            <img src={logoImg} alt="RoomSync Logo" className="h-12 w-auto object-contain hover:scale-102 transition-transform duration-300" />
           </Link>
 
           {/* Right side */}
@@ -287,16 +280,8 @@ const Navbar = () => {
         >
           {/* Drawer Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 shrink-0">
-            <Link to="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 group">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200 transition-transform group-hover:scale-105">
-                <House className="h-4 w-4" />
-              </span>
-              <span
-                className="text-lg font-bold tracking-tight text-slate-900"
-                style={{ fontFamily: 'Outfit, sans-serif' }}
-              >
-                Room<span className="text-indigo-600">Sync</span>
-              </span>
+            <Link to="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center group">
+              <img src={logoImg} alt="RoomSync Logo" className="h-12 w-auto object-contain hover:scale-102 transition-transform duration-300" />
             </Link>
             <button
               type="button"

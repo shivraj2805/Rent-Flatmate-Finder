@@ -4,6 +4,7 @@ import { House, Menu, X, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAuth from '../../hooks/useAuth.jsx'
 import { navLinks } from './landingData.js'
+import logoImg from '../../assets/logo.png'
 
 const LandingNavbar = () => {
   const { isAuthenticated } = useAuth()
@@ -29,16 +30,8 @@ const LandingNavbar = () => {
     >
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 text-slate-900 group">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
-            <House className="h-5 w-5" />
-          </span>
-          <span
-            className="text-xl font-bold tracking-tight text-slate-900"
-            style={{ fontFamily: 'Outfit, sans-serif' }}
-          >
-            RoomSync
-          </span>
+        <Link to="/" className="flex items-center group">
+          <img src={logoImg} alt="RoomSync Logo" className="h-16 w-auto object-contain hover:scale-102 transition-transform duration-300" />
         </Link>
 
         {/* Desktop Nav Links */}

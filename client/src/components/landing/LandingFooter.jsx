@@ -1,5 +1,6 @@
 import { Mail, House } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import logoImg from '../../assets/logo.png'
 
 const LandingFooter = () => {
   return (
@@ -11,16 +12,8 @@ const LandingFooter = () => {
           
           {/* Column 1: Brand details */}
           <div className="lg:col-span-2 space-y-5 text-left">
-            <Link to="/" className="flex items-center gap-2.5 text-white group">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white">
-                <House className="h-5 w-5" />
-              </span>
-              <span 
-                className="text-xl font-bold tracking-tight text-white"
-                style={{ fontFamily: 'Outfit, sans-serif' }}
-              >
-                RoomSync
-              </span>
+            <Link to="/" className="inline-flex items-center group bg-white px-3.5 py-1.5 rounded-xl shadow-md border border-slate-100 hover:scale-[1.02] transition-transform duration-300 w-fit">
+              <img src={logoImg} alt="RoomSync Logo" className="h-14 w-auto object-contain" />
             </Link>
             
             <p className="text-sm leading-relaxed text-slate-400 max-w-sm">
