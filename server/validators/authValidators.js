@@ -1,11 +1,18 @@
 const Joi = require('joi')
 
 const registerSchema = Joi.object({
-  name: Joi.string().trim().min(2).max(120).required().messages({
-    'string.empty': 'Name cannot be empty',
-    'string.min': 'Name must be at least 2 characters long',
-    'any.required': 'Name is required',
-  }),
+  name: Joi.string()
+    .trim()
+    .min(2)
+    .max(120)
+    .pattern(/^[^0-9]+$/)
+    .required()
+    .messages({
+      'string.empty': 'Name cannot be empty',
+      'string.min': 'Name must be at least 2 characters long',
+      'string.pattern.base': 'Name cannot contain numbers',
+      'any.required': 'Name is required',
+    }),
   email: Joi.string().trim().lowercase().email().required().messages({
     'string.empty': 'Email is required',
     'string.email': 'Please provide a valid email address',
@@ -39,11 +46,18 @@ const loginSchema = Joi.object({
 })
 
 const updateProfileSchema = Joi.object({
-  name: Joi.string().trim().min(2).max(120).required().messages({
-    'string.empty': 'Name cannot be empty',
-    'string.min': 'Name must be at least 2 characters long',
-    'any.required': 'Name is required',
-  }),
+  name: Joi.string()
+    .trim()
+    .min(2)
+    .max(120)
+    .pattern(/^[^0-9]+$/)
+    .required()
+    .messages({
+      'string.empty': 'Name cannot be empty',
+      'string.min': 'Name must be at least 2 characters long',
+      'string.pattern.base': 'Name cannot contain numbers',
+      'any.required': 'Name is required',
+    }),
   email: Joi.string().trim().lowercase().email().required().messages({
     'string.empty': 'Email is required',
     'string.email': 'Please provide a valid email address',

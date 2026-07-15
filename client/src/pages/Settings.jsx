@@ -26,19 +26,37 @@ const Settings = () => {
     setProfileError('')
     setProfileSuccess('')
 
-    if (!name.trim()) {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
       setProfileError('Name cannot be empty')
       return
     }
 
-    if (!email.trim()) {
+    if (trimmedName.length < 2) {
+      setProfileError('Name must be at least 2 characters long')
+      return
+    }
+
+    if (/\d/.test(trimmedName)) {
+      setProfileError('Name cannot contain numbers')
+      return
+    }
+
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
       setProfileError('Email cannot be empty')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(trimmedEmail)) {
+      setProfileError('Please provide a valid email address')
       return
     }
 
     setProfileSaving(true)
     try {
-      const response = await authService.updateProfile({ name, email })
+      const response = await authService.updateProfile({ name: trimmedName, email: trimmedEmail })
       if (response.success) {
         setProfileSuccess(response.message || 'Profile updated successfully!')
         updateUser(response.user)
@@ -62,6 +80,11 @@ const Settings = () => {
 
     if (newPassword.length < 8) {
       setPasswordError('New password must be at least 8 characters long')
+      return
+    }
+
+    if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(newPassword)) {
+      setPasswordError('New password must contain at least one letter and one number')
       return
     }
 
@@ -131,7 +154,10 @@ const Settings = () => {
                 type="text"
                 placeholder="Your full name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value.replace(/[0-9]/g, ''))
+                  setProfileError('')
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
             </div>

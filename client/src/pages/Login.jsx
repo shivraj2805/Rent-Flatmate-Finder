@@ -9,6 +9,7 @@ const Login = () => {
   const { login, error, clearError, isAuthenticated } = useAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   const from = location.state?.from?.pathname || '/dashboard'
 
@@ -20,17 +21,35 @@ const Login = () => {
 
   const handleChange = (event) => {
     const { name, value } = event.target
+    setValidationError('')
+    clearError()
     setForm((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     clearError()
-    setSubmitting(true)
+    setValidationError('')
 
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      setValidationError('Please provide a valid email address')
+      return
+    }
+
+    // Validate password
+    if (!form.password) {
+      setValidationError('Password is required')
+      return
+    }
+
+    setSubmitting(true)
     try {
       await login(form)
       navigate(from, { replace: true })
+    } catch (err) {
+      // Errors from server are set in context error state
     } finally {
       setSubmitting(false)
     }
@@ -127,9 +146,9 @@ const Login = () => {
               />
             </label>
 
-            {error ? (
+            {validationError || error ? (
               <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-600 leading-relaxed">
-                {error}
+                {validationError || error}
               </div>
             ) : null}
 

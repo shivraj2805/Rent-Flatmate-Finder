@@ -5,10 +5,12 @@ const registerSchema = Joi.object({
     .trim()
     .min(2)
     .max(120)
+    .pattern(/^[^0-9]+$/)
     .required()
     .messages({
       'string.empty': 'Name cannot be empty',
       'string.min': 'Name must be at least 2 characters long',
+      'string.pattern.base': 'Name cannot contain numbers',
     }),
   email: Joi.string()
     .trim()
@@ -58,10 +60,12 @@ const updateProfileSchema = Joi.object({
     .trim()
     .min(2)
     .max(120)
+    .pattern(/^[^0-9]+$/)
     .required()
     .messages({
       'string.empty': 'Name cannot be empty',
       'string.min': 'Name must be at least 2 characters long',
+      'string.pattern.base': 'Name cannot contain numbers',
     }),
   email: Joi.string()
     .trim()

@@ -13,20 +13,57 @@ const Register = () => {
     role: 'tenant',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   const handleChange = (event) => {
-    const { name, value } = event.target
+    let { name, value } = event.target
+    if (name === 'name') {
+      value = value.replace(/[0-9]/g, '')
+    }
+    setValidationError('')
+    clearError()
     setForm((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     clearError()
-    setSubmitting(true)
+    setValidationError('')
 
+    // Validate name
+    const trimmedName = form.name.trim()
+    if (trimmedName.length < 2) {
+      setValidationError('Name must be at least 2 characters long')
+      return
+    }
+    if (/\d/.test(trimmedName)) {
+      setValidationError('Name cannot contain numbers')
+      return
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      setValidationError('Please provide a valid email address')
+      return
+    }
+
+    // Validate password
+    if (form.password.length < 8) {
+      setValidationError('Password must be at least 8 characters long')
+      return
+    }
+    if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(form.password)) {
+      setValidationError('Password must contain at least one letter and one number')
+      return
+    }
+
+    setSubmitting(true)
     try {
-      await register(form)
+      await register({ ...form, name: trimmedName })
       navigate('/dashboard', { replace: true })
+    } catch (err) {
+      // Errors from server are set in the context error state
     } finally {
       setSubmitting(false)
     }
@@ -149,9 +186,9 @@ const Register = () => {
               </select>
             </label>
 
-            {error ? (
+            {validationError || error ? (
               <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-600 leading-relaxed">
-                {error}
+                {validationError || error}
               </div>
             ) : null}
 

@@ -8,6 +8,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       minlength: 2,
       maxlength: 120,
+      validate: {
+        validator: function(v) {
+          return !/\d/.test(v);
+        },
+        message: 'Name cannot contain numbers',
+      },
     },
     email: {
       type: String,
