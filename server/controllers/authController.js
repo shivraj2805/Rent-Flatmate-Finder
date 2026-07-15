@@ -1,5 +1,6 @@
 const authService = require('../services/authService')
 const asyncHandler = require('../middleware/asyncHandler')
+const { invalidateUserCache } = require('../middleware/authMiddleware')
 
 const registerUser = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body)
@@ -62,6 +63,7 @@ const getAdminOnlyDemo = asyncHandler(async (req, res) => {
 
 const updateProfileUser = asyncHandler(async (req, res) => {
   const user = await authService.updateProfile(req.user._id, req.body)
+  invalidateUserCache(req.user._id)
 
   res.json({
     success: true,
@@ -72,6 +74,7 @@ const updateProfileUser = asyncHandler(async (req, res) => {
 
 const updatePasswordUser = asyncHandler(async (req, res) => {
   await authService.updatePassword(req.user._id, req.body)
+  invalidateUserCache(req.user._id)
 
   res.json({
     success: true,

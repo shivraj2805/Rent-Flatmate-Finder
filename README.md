@@ -1,10 +1,12 @@
-# RoomSync - Rent & Flatmate Finder (MERN Stack with Gemini AI)
+# RoomSync - Rent & Flatmate Finder
 
 RoomSync is an enterprise-grade MERN stack application designed to simplify finding apartments and compatible flatmates in Pune. The platform features role-based workflows, Gemini AI-powered compatibility matching with deterministic rule-based fallback logic, a real-time secure chat messenger, custom dynamic status tracking, and a comprehensive admin command center.
 
+**Live Hosted Application URL**: [https://rent-flatmate-finder-weld.vercel.app/](https://rent-flatmate-finder-weld.vercel.app/)
+
 ---
 
-## 📊 End-to-End System Flow Diagram
+##  End-to-End System Flow Diagram
 
 The diagram below visualizes the complete user lifecycle, AI compatibility scoring, interest match request workflows, and real-time messaging gates:
 
@@ -91,28 +93,28 @@ RoomSync provides a secure, intelligent, and real-time portal connecting flatmat
 
 ## 🚀 Key Features
 
-### 👤 Role-Based Portals & Dashboards
+###  Role-Based Portals & Dashboards
 - **Tenants**: Express interests in listings, track application statuses, maintain preferred budgets and locations, and chat directly with landlords once accepted.
 - **Owners**: Add/manage room listings with rich image attachments, review tenant profiles, evaluate compatibility scores, and trigger instant chat channels.
 - **Admins**: Monitor site statistics, manage users and listings, perform bulk audit actions, search log timelines, and toggle "Live Mode" for automatic dashboard refreshes.
 
-### 🧠 Gemini AI Compatibility Engine
+###  Gemini AI Compatibility Engine
 - Leverages the Google Gemini Flash API (`gemini-2.5-flash`) to generate semantic compatibility percentages (0-100%) and textual explanations based on budget, move-in schedules, and locations.
 - Automatically falls back to a deterministic **Rule-Based Matching Algorithm** (Budget 40%, Location 30%, Move-In Date 20%, Room Type 10%) if the AI API key is missing or rate limits are reached.
 
-### 💬 Real-Time Messaging & Notifications
+###  Real-Time Messaging & Notifications
 - Fully integrated WebSocket client via **Socket.IO** for instant chat message bubbles, status indicators, and typing notifications.
 - **In-App Notification Center**: Real-time push alerts (bell icon dropdown in Navbar) notifying users of new messages, incoming match requests, or approval updates.
 - **Auto-Read Queue**: Once a notification is clicked or bulk-marked as read, it is optimistically swept from the active dropdown view.
 
-### 📱 Responsive & Mobile-Friendly Overhaul
+###  Responsive & Mobile-Friendly Overhaul
 - **Mobile Hamburger Menu**: Auto-populates navigation links matching the authenticated user's role privileges (Tenant vs Owner vs Admin) and collapses when clicked.
 - **Collapsible Filters**: Search filters compress to a single-row text search on mobile and toggle details using a responsive Sliders drawer.
 - **Form Actions & Chats**: Stacks buttons vertically on mobile for touch target accessibility, and message bubbles expand to fill `85%` of narrow screen widths.
 
 ---
 
-## 🛠️ Tech Stack & Directory Structure
+##  Tech Stack & Directory Structure
 
 ```text
 RoomSync/
@@ -140,16 +142,16 @@ RoomSync/
 
 ---
 
-## 📖 Detailed Project Documentation Portal
+##  Detailed Project Documentation Portal
 
 All detailed project documentation, API maps, setup manuals, and database specifications are organized in the **[`documentation/`](file:///d:/Unthinkable%20Ass/documentation)** directory:
 
-### 🚀 Getting Started & Local Launch
+###  Getting Started & Local Launch
 - **[Installation & Local Setup Guide](file:///d:/Unthinkable%20Ass/documentation/setup-guide.md)**: Local developer requirements, environment details, and quickstart commands.
 - **[Testing & Scenarios Manual](file:///d:/Unthinkable%20Ass/documentation/testing-guide.md)**: Testing scenarios for authentication, listings, chats, and SMTP mails.
 - **[Deployment Manual](file:///d:/Unthinkable%20Ass/documentation/deployment-guide.md)**: Production deployment instructions for MongoDB Atlas, Render, and Vercel.
 
-### 🧠 System Architecture & Design
+###  System Architecture & Design
 - **[Architecture Specification](file:///d:/Unthinkable%20Ass/documentation/architecture.md)**: Multi-layer system architecture and tech stack details.
 - **[System Design Brief](file:///d:/Unthinkable%20Ass/documentation/system-design.md)**: Design summaries of compatibility scoring, fallback handling, chat, and database integrity.
 - **[Database Schema & Indexes](file:///d:/Unthinkable%20Ass/documentation/database-schema.md)**: Field mappings, validation constraints, and query indices.
@@ -157,7 +159,7 @@ All detailed project documentation, API maps, setup manuals, and database specif
 
 ---
 
-## ⚙️ Quick Local Installation Summary
+##  Quick Local Installation Summary
 
 ### 1. Server Configuration
 ```bash

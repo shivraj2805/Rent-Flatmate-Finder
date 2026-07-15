@@ -34,8 +34,14 @@ export const AuthProvider = ({ children }) => {
         setUser(response.user)
         localStorage.setItem('rentFlatmateUser', JSON.stringify(response.user))
       } catch (requestError) {
-        logout()
-        setError(requestError?.response?.data?.message || 'Failed to load user session')
+        // Only log out if the server explicitly rejects the token with 401 (Unauthorized) or 403 (Forbidden)
+        if (requestError?.response && [401, 403].includes(requestError.response.status)) {
+          logout()
+          setError(requestError?.response?.data?.message || 'Session expired. Please log in again.')
+        } else {
+          // Network error or server cold start: keep the cached local session
+          console.warn('[AuthContext] Network or server error during session verification, retaining cached credentials.', requestError.message)
+        }
       } finally {
         setLoading(false)
       }
